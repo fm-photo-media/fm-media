@@ -1,0 +1,72 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model GalleryImage {
+  id          String   @id @default(cuid())
+  title       String
+  alt         String
+  category    String
+  imageUrl    String
+  width       Int      @default(1600)
+  height      Int      @default(1100)
+  featured    Boolean  @default(false)
+  published   Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model Service {
+  id          String   @id @default(cuid())
+  title       String
+  slug        String   @unique
+  category    String   @default("PHOTO")
+  priceLabel  String?
+  bestUse     String?
+  squareFeet  String?
+  summary     String
+  description String
+  startingAt  Int
+  deliverable String
+  turnaround  String
+  sortOrder   Int      @default(0)
+  featured    Boolean  @default(false)
+  published   Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model Inquiry {
+  id              String        @id @default(cuid())
+  name            String
+  email           String
+  phone           String
+  agencyName      String?
+  propertyAddress String
+  propertySize    String        @default("Not provided")
+  photoPackage    String        @default("Not selected")
+  addOns          String        @default("")
+  videoService    String        @default("None")
+  firstShootOffer Boolean       @default(false)
+  shootType       String
+  preferredDate   DateTime
+  preferredTime   String        @default("Flexible")
+  message         String
+  status          String        @default("NEW")
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+}
+
+model AdminUser {
+  id           String   @id @default(cuid())
+  email        String   @unique
+  passwordHash String
+  name         String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}

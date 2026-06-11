@@ -10,6 +10,8 @@ export const revalidate = 3600;
 
 export default async function HomePage() {
   const [images, services] = await Promise.all([getFeaturedGalleryImages(3), getPublishedServices()]);
+  const featuredServices = services.filter((service) => service.featured).slice(0, 4);
+  const homepageServices = featuredServices.length ? featuredServices : services.slice(0, 4);
 
   return (
     <main>
@@ -77,7 +79,7 @@ export default async function HomePage() {
             <PromoCallout compact />
           </div>
           <div className="mt-8 grid gap-5 md:grid-cols-2 xl:grid-cols-4">
-            {services.filter((service) => service.category === "PHOTO").slice(0, 4).map((service) => (
+            {homepageServices.map((service) => (
               <PricingCard key={service.id} service={service} />
             ))}
           </div>

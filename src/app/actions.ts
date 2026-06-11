@@ -91,6 +91,7 @@ export async function createService(formData: FormData) {
   }
 
   await prisma.service.create({ data: parsed.data });
+  revalidatePath("/");
   revalidatePath("/services");
   revalidatePath("/pricing");
   revalidatePath("/admin");
@@ -110,6 +111,7 @@ export async function updateService(formData: FormData) {
   }
 
   await prisma.service.update({ where: { id }, data: parsed.data });
+  revalidatePath("/");
   revalidatePath("/services");
   revalidatePath("/pricing");
   revalidatePath("/admin");
@@ -119,6 +121,7 @@ export async function deleteService(formData: FormData) {
   await requireAdmin();
   requireDeleteConfirmation(formData);
   await prisma.service.delete({ where: { id: String(formData.get("id")) } });
+  revalidatePath("/");
   revalidatePath("/services");
   revalidatePath("/pricing");
   revalidatePath("/admin");

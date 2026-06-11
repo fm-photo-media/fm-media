@@ -4,6 +4,7 @@ import {
   createGalleryImage,
   createService,
   deleteGalleryImage,
+  deleteInquiry,
   deleteService,
   logoutAdmin,
   updateGalleryImage,
@@ -300,6 +301,7 @@ export default async function AdminPage({ searchParams }: { searchParams?: { err
                 <th className="px-4 py-3">Preferred</th>
                 <th className="px-4 py-3">Address</th>
                 <th className="px-4 py-3">Contacted</th>
+                <th className="px-4 py-3">Delete</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-line">
@@ -363,11 +365,23 @@ export default async function AdminPage({ searchParams }: { searchParams?: { err
                       </button>
                     </form>
                   </td>
+                  <td className="px-4 py-3">
+                    <form action={deleteInquiry} className="grid gap-2">
+                      <input type="hidden" name="id" value={inquiry.id} />
+                      <label className="flex items-center gap-2 text-xs font-medium text-ink/70">
+                        <input name="confirmDelete" type="checkbox" required className="h-4 w-4 accent-clay" />
+                        Confirm
+                      </label>
+                      <button className="focus-ring w-fit text-sm font-semibold text-clay">
+                        Delete
+                      </button>
+                    </form>
+                  </td>
                 </tr>
               ))}
               {inquiries.length === 0 ? (
                 <tr>
-                  <td className="px-4 py-6 text-ink/60" colSpan={6}>
+                  <td className="px-4 py-6 text-ink/60" colSpan={7}>
                     No inquiries yet.
                   </td>
                 </tr>

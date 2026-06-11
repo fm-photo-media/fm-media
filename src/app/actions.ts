@@ -185,3 +185,10 @@ export async function updateInquiryContacted(formData: FormData) {
 
   revalidatePath("/admin");
 }
+
+export async function deleteInquiry(formData: FormData) {
+  await requireAdmin();
+  requireDeleteConfirmation(formData);
+  await prisma.inquiry.delete({ where: { id: String(formData.get("id")) } });
+  revalidatePath("/admin");
+}

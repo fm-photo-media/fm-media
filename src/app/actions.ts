@@ -1,5 +1,6 @@
 "use server";
 
+import { put } from "@vercel/blob";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { clearAdminSession, requireAdmin, setAdminSession, verifyAdminPassword } from "@/lib/admin-auth";
@@ -20,6 +21,48 @@ function checkboxValue(formData: FormData, name: string) {
 function requireDeleteConfirmation(formData: FormData) {
   if (!checkboxValue(formData, "confirmDelete")) {
     redirect("/admin?error=confirm-delete");
+  }
+}
+
+function imageFileFromForm(formData: FormData) {
+  const value = formData.get("imageFile");
+
+  if (value instanceof File && value.size > 0) {
+    return value;
+  }
+
+  return null;
+}
+
+function safeUploadName(name: string) {
+  return name
+    .toLowerCase()
+    .replace(/[^a-z0-9.]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+}
+
+async function galleryImageUrlFromForm(formData: FormData) {
+  const file = imageFileFromForm(formData);
+
+  if (!file) {
+    return String(formData.get("imageUrl") ?? "").trim();
+  }
+
+  const allowedTypes = new Set(["image/jpeg", "image/png", "image/webp", "image/avif"]);
+
+  if (!allowedTypes.has(file.type) || file.size > 8 * 1024 * 1024) {
+    redirect("/admin?error=invalid-image");
+  }
+
+  try {
+    const blob = await put(`gallery/${Date.now()}-${safeUploadName(file.name)}`, file, {
+      access: "public",
+      addRandomSuffix: true
+    });
+
+    return blob.url;
+  } catch {
+    redirect("/admin?error=upload-failed");
   }
 }
 
@@ -131,6 +174,7 @@ export async function createGalleryImage(formData: FormData) {
   await requireAdmin();
   const parsed = galleryImageSchema.safeParse({
     ...Object.fromEntries(formData),
+    imageUrl: await galleryImageUrlFromForm(formData),
     featured: checkboxValue(formData, "featured"),
     published: checkboxValue(formData, "published")
   });
@@ -150,6 +194,7 @@ export async function updateGalleryImage(formData: FormData) {
   const id = String(formData.get("id"));
   const parsed = galleryImageSchema.safeParse({
     ...Object.fromEntries(formData),
+    imageUrl: await galleryImageUrlFromForm(formData),
     featured: checkboxValue(formData, "featured"),
     published: checkboxValue(formData, "published")
   });

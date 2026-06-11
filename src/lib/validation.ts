@@ -99,11 +99,12 @@ export const galleryImageSchema = z.object({
     }
 
     try {
-      return new URL(value).hostname === "images.unsplash.com";
+      const hostname = new URL(value).hostname;
+      return hostname === "images.unsplash.com" || hostname.endsWith(".public.blob.vercel-storage.com");
     } catch {
       return false;
     }
-  }, "Use a local /images path or an images.unsplash.com URL."),
+  }, "Use a local /images path, images.unsplash.com URL, or uploaded Vercel Blob image."),
   width: z.coerce.number().int().min(320).default(1600),
   height: z.coerce.number().int().min(240).default(1100),
   featured: z.coerce.boolean().optional().default(false),

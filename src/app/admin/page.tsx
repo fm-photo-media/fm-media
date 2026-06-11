@@ -58,10 +58,27 @@ function Checkbox({ name, label, defaultChecked }: { name: string; label: string
   );
 }
 
+function FileInput({ name, label, required = false }: { name: string; label: string; required?: boolean }) {
+  return (
+    <label className="grid gap-1 text-sm font-medium text-ink">
+      {label}
+      <input
+        name={name}
+        type="file"
+        accept="image/jpeg,image/png,image/webp,image/avif"
+        required={required}
+        className="rounded-md border border-line px-3 py-2 font-normal file:mr-3 file:rounded-full file:border-0 file:bg-ink file:px-3 file:py-1.5 file:text-sm file:font-semibold file:text-white"
+      />
+      <span className="text-xs font-normal text-ink/55">JPEG, PNG, WebP, or AVIF. Max 8 MB.</span>
+    </label>
+  );
+}
+
 const adminErrors: Record<string, string> = {
   "confirm-delete": "Check the confirmation box before deleting.",
   "invalid-service": "Service details are incomplete or invalid.",
-  "invalid-image": "Gallery image details are incomplete or use an unsupported image URL."
+  "invalid-image": "Gallery image details are incomplete or use an unsupported image file.",
+  "upload-failed": "The image could not be uploaded. Check that Vercel Blob storage is connected."
 };
 
 export default async function AdminPage({ searchParams }: { searchParams?: { error?: string } }) {
@@ -183,7 +200,7 @@ export default async function AdminPage({ searchParams }: { searchParams?: { err
             <TextInput name="title" label="Title" />
             <TextInput name="alt" label="Alt Text" />
             <TextInput name="category" label="Category" />
-            <TextInput name="imageUrl" label="Image URL or Local Path" />
+            <FileInput name="imageFile" label="Choose Image File" required />
             <div className="grid gap-4 sm:grid-cols-2">
               <TextInput name="width" label="Width" type="number" defaultValue={1600} />
               <TextInput name="height" label="Height" type="number" defaultValue={1100} />
@@ -263,7 +280,8 @@ export default async function AdminPage({ searchParams }: { searchParams?: { err
                 <div className="grid gap-4 lg:grid-cols-3">
                   <TextInput name="title" label="Title" defaultValue={image.title} />
                   <TextInput name="category" label="Category" defaultValue={image.category} />
-                  <TextInput name="imageUrl" label="Image URL or Local Path" defaultValue={image.imageUrl} />
+                  <input type="hidden" name="imageUrl" value={image.imageUrl} />
+                  <FileInput name="imageFile" label="Replace Image File" />
                 </div>
                 <TextInput name="alt" label="Alt Text" defaultValue={image.alt} />
                 <div className="grid gap-4 md:grid-cols-2">

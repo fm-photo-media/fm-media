@@ -9,6 +9,7 @@ Fast full-stack real estate photography service website built with Next.js App R
 - `Contact` uses a small client form for submission state and saves inquiries through a server action.
 - `/api/inquiries` also accepts JSON booking requests for integrations.
 - `Admin` is dynamic and handles CRUD for services and gallery images plus inquiry review.
+- Admin gallery uploads use Vercel Blob storage and save public image URLs in PostgreSQL.
 - Images render through `next/image` with AVIF/WebP support and responsive sizing.
 
 ## Data Models
@@ -37,9 +38,10 @@ The default development password is `change-me`; set `ADMIN_PASSWORD` and `ADMIN
 ## Production Notes
 
 - Set `DATABASE_URL` in Vercel to a hosted PostgreSQL connection string.
-- Set `ADMIN_PASSWORD`, `ADMIN_SESSION_SECRET`, `NEXT_PUBLIC_SITE_URL`, `EMAIL_FROM`, `EMAIL_TO`, and `EMAIL_API_KEY` in Vercel.
+- Set `ADMIN_PASSWORD`, `ADMIN_SESSION_SECRET`, `NEXT_PUBLIC_SITE_URL`, `EMAIL_FROM`, `EMAIL_TO`, `EMAIL_API_KEY`, and `BLOB_READ_WRITE_TOKEN` in Vercel.
 - Replace the simple password gate with a full auth provider if multiple admins need accounts or audit history.
 - Run production migrations with `npm run prisma:deploy`.
 - Seed packages and gallery records with `npm run prisma:seed`.
 
 Email notifications use the Resend HTTP API. `EMAIL_API_KEY` should be a Resend API key, `EMAIL_FROM` should be a verified sender, and `EMAIL_TO` should be the business owner's booking inbox.
+Gallery file uploads use Vercel Blob. Connect a Blob store to the Vercel project so `BLOB_READ_WRITE_TOKEN` is available before using admin uploads.

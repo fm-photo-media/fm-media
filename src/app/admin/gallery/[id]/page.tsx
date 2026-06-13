@@ -19,15 +19,18 @@ export default async function EditGalleryImagePage({
   params,
   searchParams
 }: {
-  params: { id: string };
-  searchParams?: { error?: string; success?: string };
+  params: Promise<{ id: string }>;
+  searchParams?: Promise<{ error?: string; success?: string }>;
 }) {
   if (!(await isAdminAuthenticated())) {
     redirect("/admin/login");
   }
 
+  const { id } = await params;
+  const notice = await searchParams;
+
   const image = await prisma.galleryImage.findUnique({
-    where: { id: params.id },
+    where: { id },
     select: {
       id: true,
       title: true,
@@ -51,7 +54,7 @@ export default async function EditGalleryImagePage({
         Back to Gallery
       </Link>
       <SectionHeading eyebrow="Admin" title={`Edit ${image.title}`} copy="Update labels, dimensions, visibility, or replace the uploaded image file." />
-      <AdminNotice error={searchParams?.error} success={searchParams?.success} />
+      <AdminNotice error={notice?.error} success={notice?.success} />
 
       <article className="mt-8 rounded-lg border border-line bg-white p-5 shadow-sm">
         <div className="mb-6 overflow-hidden rounded-lg border border-line bg-mist">

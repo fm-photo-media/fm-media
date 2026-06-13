@@ -5,6 +5,7 @@ import { useRef, useState, type FormEvent } from "react";
 import { Checkbox, TextInput } from "@/app/admin/admin-fields";
 
 const MAX_GALLERY_UPLOAD_BYTES = 10 * 1024 * 1024;
+const SERVER_UPLOAD_BYTES = 4 * 1024 * 1024;
 const ALLOWED_IMAGE_TYPES = new Set(["image/jpeg", "image/png", "image/webp", "image/avif"]);
 
 type GalleryImageFormValues = {
@@ -55,19 +56,25 @@ export function GalleryImageForm({ action, defaults, fileLabel, submitLabel, req
       return;
     }
 
-    event.preventDefault();
     setError("");
 
     if (!ALLOWED_IMAGE_TYPES.has(file.type)) {
+      event.preventDefault();
       setError("Choose a JPEG, PNG, WebP, or AVIF image.");
       return;
     }
 
     if (file.size > MAX_GALLERY_UPLOAD_BYTES) {
+      event.preventDefault();
       setError("Choose an image under 10 MB.");
       return;
     }
 
+    if (file.size <= SERVER_UPLOAD_BYTES) {
+      return;
+    }
+
+    event.preventDefault();
     setIsUploading(true);
     setProgress(0);
     setStatus("Preparing upload...");
@@ -87,6 +94,10 @@ export function GalleryImageForm({ action, defaults, fileLabel, submitLabel, req
 
       if (imageUrlRef.current) {
         imageUrlRef.current.value = blob.url;
+      }
+
+      if (fileRef.current) {
+        fileRef.current.value = "";
       }
 
       allowSubmitRef.current = true;
@@ -114,6 +125,7 @@ export function GalleryImageForm({ action, defaults, fileLabel, submitLabel, req
         {fileLabel}
         <input
           ref={fileRef}
+          name="imageFile"
           type="file"
           accept="image/jpeg,image/png,image/webp,image/avif"
           required={requireFile}

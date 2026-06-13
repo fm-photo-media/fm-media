@@ -195,7 +195,7 @@ export async function createGalleryImage(formData: FormData) {
   });
 
   if (!parsed.success) {
-    redirect("/admin?error=invalid-image");
+    redirect("/admin/gallery?error=invalid-image");
   }
 
   await prisma.galleryImage.create({ data: parsed.data });
@@ -216,7 +216,7 @@ export async function updateGalleryImage(formData: FormData) {
   });
 
   if (!parsed.success) {
-    redirect("/admin?error=invalid-image");
+    redirect("/admin/gallery?error=invalid-image");
   }
 
   await prisma.galleryImage.update({ where: { id }, data: parsed.data });

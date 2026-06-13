@@ -1,7 +1,9 @@
 import type { Metadata } from "next";
+import Image from "next/image";
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { deleteGalleryImage, updateGalleryImage } from "@/app/actions";
+import { AdminNotice } from "@/app/admin/admin-fields";
 import { GalleryImageForm } from "@/app/admin/gallery/gallery-image-form";
 import { SectionHeading } from "@/components/section-heading";
 import { isAdminAuthenticated } from "@/lib/admin-auth";
@@ -14,7 +16,13 @@ export const metadata: Metadata = {
   robots: { index: false, follow: false }
 };
 
-export default async function EditGalleryImagePage({ params }: { params: { id: string } }) {
+export default async function EditGalleryImagePage({
+  params,
+  searchParams
+}: {
+  params: { id: string };
+  searchParams?: { error?: string; success?: string };
+}) {
   if (!(await isAdminAuthenticated())) {
     redirect("/admin/login");
   }
@@ -44,8 +52,19 @@ export default async function EditGalleryImagePage({ params }: { params: { id: s
         Back to Gallery
       </Link>
       <SectionHeading eyebrow="Admin" title={`Edit ${image.title}`} copy="Update labels, dimensions, visibility, or replace the uploaded image file." />
+      <AdminNotice error={searchParams?.error} success={searchParams?.success} />
 
       <article className="mt-8 rounded-lg border border-line bg-white p-5 shadow-sm">
+        <div className="mb-6 overflow-hidden rounded-lg border border-line bg-mist">
+          <Image
+            src={image.imageUrl}
+            alt={image.alt}
+            width={image.width}
+            height={image.height}
+            className="h-auto w-full object-cover"
+            sizes="(min-width: 1024px) 768px, 100vw"
+          />
+        </div>
         <GalleryImageForm action={updateGalleryImage} defaults={image} fileLabel="Replace Image File" submitLabel="Save" />
         <form action={deleteGalleryImage} className="mt-6 border-t border-line pt-4">
           <input type="hidden" name="id" value={image.id} />

@@ -82,7 +82,13 @@ const adminErrors: Record<string, string> = {
   "upload-failed": "The image could not be uploaded. Check that Vercel Blob storage is connected."
 };
 
-export default async function AdminPage({ searchParams }: { searchParams?: { error?: string } }) {
+const adminSuccess: Record<string, string> = {
+  "gallery-created": "Gallery image uploaded and added.",
+  "gallery-updated": "Gallery image updated.",
+  "gallery-deleted": "Gallery image deleted."
+};
+
+export default async function AdminPage({ searchParams }: { searchParams?: { error?: string; success?: string } }) {
   if (!(await isAdminAuthenticated())) {
     redirect("/admin/login");
   }
@@ -134,6 +140,11 @@ export default async function AdminPage({ searchParams }: { searchParams?: { err
           {searchParams?.error ? (
             <p className="mt-4 rounded-md border border-line bg-white px-4 py-3 text-sm font-medium text-clay" role="alert">
               {adminErrors[searchParams.error] ?? "Something needs attention before saving."}
+            </p>
+          ) : null}
+          {searchParams?.success ? (
+            <p className="mt-4 rounded-md border border-line bg-white px-4 py-3 text-sm font-medium text-ink" role="status">
+              {adminSuccess[searchParams.success] ?? "Saved."}
             </p>
           ) : null}
 

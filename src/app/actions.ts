@@ -191,6 +191,7 @@ export async function createGalleryImage(formData: FormData) {
   revalidatePath("/");
   revalidatePath("/portfolio");
   revalidatePath("/admin");
+  redirect("/admin?success=gallery-created#gallery");
 }
 
 export async function updateGalleryImage(formData: FormData) {
@@ -211,6 +212,7 @@ export async function updateGalleryImage(formData: FormData) {
   revalidatePath("/");
   revalidatePath("/portfolio");
   revalidatePath("/admin");
+  redirect("/admin?success=gallery-updated#gallery");
 }
 
 export async function deleteGalleryImage(formData: FormData) {
@@ -220,6 +222,7 @@ export async function deleteGalleryImage(formData: FormData) {
   revalidatePath("/");
   revalidatePath("/portfolio");
   revalidatePath("/admin");
+  redirect("/admin?success=gallery-deleted#gallery");
 }
 
 export async function updateInquiryContacted(formData: FormData) {

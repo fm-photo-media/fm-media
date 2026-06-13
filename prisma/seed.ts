@@ -79,6 +79,13 @@ const images = [
     category: "Exterior",
     imageUrl: "/images/portfolio/real-estate-photo-13.jpg",
     featured: false
+  },
+  {
+    title: "Rear Exterior Yard",
+    alt: "Rear exterior real estate photo showing a fenced backyard, deck, and mature trees",
+    category: "Exterior",
+    imageUrl: "/images/portfolio/rear-exterior-dsc08721.jpg",
+    featured: false
   }
 ];
 

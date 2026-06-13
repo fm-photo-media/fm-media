@@ -95,8 +95,39 @@ export default async function AdminPage({ searchParams }: { searchParams?: { err
 
   const [services, images, inquiries] = await Promise.all([
     prisma.service.findMany({ orderBy: { updatedAt: "desc" } }),
-    prisma.galleryImage.findMany({ orderBy: { updatedAt: "desc" } }),
-    prisma.inquiry.findMany({ orderBy: { createdAt: "desc" }, take: 25 })
+    prisma.galleryImage.findMany({
+      orderBy: { updatedAt: "desc" },
+      select: {
+        id: true,
+        title: true,
+        alt: true,
+        category: true,
+        width: true,
+        height: true,
+        featured: true,
+        published: true
+      }
+    }),
+    prisma.inquiry.findMany({
+      orderBy: { createdAt: "desc" },
+      take: 25,
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        phone: true,
+        agencyName: true,
+        propertyAddress: true,
+        propertySize: true,
+        photoPackage: true,
+        addOns: true,
+        videoService: true,
+        firstShootOffer: true,
+        preferredDate: true,
+        preferredTime: true,
+        status: true
+      }
+    })
   ]);
 
   const adminNav = [
@@ -292,7 +323,6 @@ export default async function AdminPage({ searchParams }: { searchParams?: { err
                 <div className="grid gap-4 lg:grid-cols-3">
                   <TextInput name="title" label="Title" defaultValue={image.title} />
                   <TextInput name="category" label="Category" defaultValue={image.category} />
-                  <input type="hidden" name="imageUrl" value={image.imageUrl} />
                   <FileInput name="imageFile" label="Replace Image File" />
                 </div>
                 <TextInput name="alt" label="Alt Text" defaultValue={image.alt} />

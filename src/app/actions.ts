@@ -41,11 +41,22 @@ function safeUploadName(name: string) {
     .replace(/^-+|-+$/g, "");
 }
 
-async function galleryImageUrlFromForm(formData: FormData) {
+async function galleryImageUrlFromForm(formData: FormData, existingId?: string) {
   const file = imageFileFromForm(formData);
 
   if (!file) {
-    return String(formData.get("imageUrl") ?? "").trim();
+    const imageUrl = String(formData.get("imageUrl") ?? "").trim();
+
+    if (imageUrl || !existingId) {
+      return imageUrl;
+    }
+
+    const existing = await prisma.galleryImage.findUnique({
+      where: { id: existingId },
+      select: { imageUrl: true }
+    });
+
+    return existing?.imageUrl ?? "";
   }
 
   const allowedTypes = new Set(["image/jpeg", "image/png", "image/webp", "image/avif"]);
@@ -199,7 +210,7 @@ export async function updateGalleryImage(formData: FormData) {
   const id = String(formData.get("id"));
   const parsed = galleryImageSchema.safeParse({
     ...Object.fromEntries(formData),
-    imageUrl: await galleryImageUrlFromForm(formData),
+    imageUrl: await galleryImageUrlFromForm(formData, id),
     featured: checkboxValue(formData, "featured"),
     published: checkboxValue(formData, "published")
   });

@@ -45,7 +45,7 @@ export function FileInput({ name, label, required = false }: { name: string; lab
         required={required}
         className="rounded-md border border-line px-3 py-2 font-normal file:mr-3 file:rounded-full file:border-0 file:bg-ink file:px-3 file:py-1.5 file:text-sm file:font-semibold file:text-white"
       />
-      <span className="text-xs font-normal text-ink/55">JPEG, PNG, WebP, or AVIF. Max 4 MB.</span>
+      <span className="text-xs font-normal text-ink/55">JPEG, PNG, WebP, or AVIF. Max 10 MB.</span>
     </label>
   );
 }

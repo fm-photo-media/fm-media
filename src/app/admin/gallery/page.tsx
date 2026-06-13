@@ -2,7 +2,8 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { createGalleryImage, deleteGalleryImage } from "@/app/actions";
-import { AdminNotice, Checkbox, FileInput, TextInput } from "@/app/admin/admin-fields";
+import { AdminNotice } from "@/app/admin/admin-fields";
+import { GalleryImageForm } from "@/app/admin/gallery/gallery-image-form";
 import { SectionHeading } from "@/components/section-heading";
 import { isAdminAuthenticated } from "@/lib/admin-auth";
 import { prisma } from "@/lib/prisma";
@@ -41,21 +42,7 @@ export default async function AdminGalleryPage({ searchParams }: { searchParams?
 
       <section className="mt-10 rounded-lg border border-line bg-white p-5 shadow-sm">
         <h2 className="font-serif text-2xl">Add Gallery Image</h2>
-        <form action={createGalleryImage} className="mt-5 grid gap-4">
-          <TextInput name="title" label="Title" />
-          <TextInput name="alt" label="Alt Text" />
-          <TextInput name="category" label="Category" />
-          <FileInput name="imageFile" label="Choose Image File" required />
-          <div className="grid gap-4 sm:grid-cols-2">
-            <TextInput name="width" label="Width" type="number" defaultValue={1600} />
-            <TextInput name="height" label="Height" type="number" defaultValue={1100} />
-          </div>
-          <div className="flex flex-wrap gap-5">
-            <Checkbox name="featured" label="Featured" />
-            <Checkbox name="published" label="Published" defaultChecked />
-          </div>
-          <button className="focus-ring w-fit rounded-full bg-ink px-5 py-2 text-sm font-semibold text-white">Add Image</button>
-        </form>
+        <GalleryImageForm action={createGalleryImage} fileLabel="Choose Image File" submitLabel="Add Image" requireFile />
       </section>
 
       <section className="mt-12">

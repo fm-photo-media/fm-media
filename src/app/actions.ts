@@ -61,7 +61,7 @@ async function galleryImageUrlFromForm(formData: FormData, existingId?: string) 
 
   const allowedTypes = new Set(["image/jpeg", "image/png", "image/webp", "image/avif"]);
 
-  if (!allowedTypes.has(file.type) || file.size > 4 * 1024 * 1024) {
+  if (!allowedTypes.has(file.type) || file.size > 10 * 1024 * 1024) {
     redirect("/admin?error=invalid-image");
   }
 

@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { deleteGalleryImage, updateGalleryImage } from "@/app/actions";
-import { Checkbox, FileInput, TextInput } from "@/app/admin/admin-fields";
+import { GalleryImageForm } from "@/app/admin/gallery/gallery-image-form";
 import { SectionHeading } from "@/components/section-heading";
 import { isAdminAuthenticated } from "@/lib/admin-auth";
 import { prisma } from "@/lib/prisma";
@@ -26,6 +26,7 @@ export default async function EditGalleryImagePage({ params }: { params: { id: s
       title: true,
       alt: true,
       category: true,
+      imageUrl: true,
       width: true,
       height: true,
       featured: true,
@@ -45,24 +46,7 @@ export default async function EditGalleryImagePage({ params }: { params: { id: s
       <SectionHeading eyebrow="Admin" title={`Edit ${image.title}`} copy="Update labels, dimensions, visibility, or replace the uploaded image file." />
 
       <article className="mt-8 rounded-lg border border-line bg-white p-5 shadow-sm">
-        <form action={updateGalleryImage} className="grid gap-4">
-          <input type="hidden" name="id" value={image.id} />
-          <div className="grid gap-4 sm:grid-cols-2">
-            <TextInput name="title" label="Title" defaultValue={image.title} />
-            <TextInput name="category" label="Category" defaultValue={image.category} />
-          </div>
-          <TextInput name="alt" label="Alt Text" defaultValue={image.alt} />
-          <FileInput name="imageFile" label="Replace Image File" />
-          <div className="grid gap-4 sm:grid-cols-2">
-            <TextInput name="width" label="Width" type="number" defaultValue={image.width} />
-            <TextInput name="height" label="Height" type="number" defaultValue={image.height} />
-          </div>
-          <div className="flex flex-wrap items-center gap-5">
-            <Checkbox name="featured" label="Featured" defaultChecked={image.featured} />
-            <Checkbox name="published" label="Published" defaultChecked={image.published} />
-            <button className="focus-ring rounded-full bg-ink px-5 py-2 text-sm font-semibold text-white">Save</button>
-          </div>
-        </form>
+        <GalleryImageForm action={updateGalleryImage} defaults={image} fileLabel="Replace Image File" submitLabel="Save" />
         <form action={deleteGalleryImage} className="mt-6 border-t border-line pt-4">
           <input type="hidden" name="id" value={image.id} />
           <label className="mr-4 inline-flex items-center gap-2 text-sm text-ink/70">

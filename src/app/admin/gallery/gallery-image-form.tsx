@@ -42,6 +42,7 @@ export function GalleryImageForm({ action, defaults, fileLabel, submitLabel, req
   const [error, setError] = useState("");
   const [progress, setProgress] = useState(0);
   const [isUploading, setIsUploading] = useState(false);
+  const [status, setStatus] = useState("");
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     if (allowSubmitRef.current) {
@@ -68,6 +69,8 @@ export function GalleryImageForm({ action, defaults, fileLabel, submitLabel, req
     }
 
     setIsUploading(true);
+    setProgress(0);
+    setStatus("Preparing upload...");
 
     try {
       const pathname = `gallery/${Date.now()}-${safeUploadName(file.name)}`;
@@ -76,7 +79,10 @@ export function GalleryImageForm({ action, defaults, fileLabel, submitLabel, req
         contentType: file.type,
         handleUploadUrl: "/api/gallery-upload",
         multipart: file.size > 4 * 1024 * 1024,
-        onUploadProgress: ({ percentage }) => setProgress(percentage)
+        onUploadProgress: ({ percentage }) => {
+          setProgress(percentage);
+          setStatus("Uploading image...");
+        }
       });
 
       if (imageUrlRef.current) {
@@ -85,8 +91,14 @@ export function GalleryImageForm({ action, defaults, fileLabel, submitLabel, req
 
       allowSubmitRef.current = true;
       formRef.current?.requestSubmit();
-    } catch {
-      setError("The image could not be uploaded. Check Vercel Blob settings and try again.");
+    } catch (uploadError) {
+      const message = uploadError instanceof Error ? uploadError.message : "";
+      setError(
+        message.includes("private store")
+          ? "Vercel Blob is set to private. Create or connect a public Blob store before uploading gallery images."
+          : "The image could not be uploaded. Check Vercel Blob settings and try again."
+      );
+      setStatus("");
       setIsUploading(false);
     }
   }
@@ -117,9 +129,10 @@ export function GalleryImageForm({ action, defaults, fileLabel, submitLabel, req
         <Checkbox name="featured" label="Featured" defaultChecked={defaults?.featured} />
         <Checkbox name="published" label="Published" defaultChecked={defaults?.published ?? true} />
         <button disabled={isUploading} className="focus-ring rounded-full bg-ink px-5 py-2 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:bg-ink/55">
-          {isUploading ? `Uploading ${progress}%` : submitLabel}
+          {isUploading ? (progress > 0 ? `Uploading ${progress}%` : "Preparing upload...") : submitLabel}
         </button>
       </div>
+      {status ? <p className="text-sm font-medium text-ink/65">{status}</p> : null}
       {error ? (
         <p className="rounded-md border border-line bg-white px-4 py-3 text-sm font-medium text-clay" role="alert">
           {error}

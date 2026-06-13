@@ -54,6 +54,10 @@ async function galleryImageUrlFromForm(formData: FormData) {
     redirect("/admin?error=invalid-image");
   }
 
+  if (!process.env.BLOB_READ_WRITE_TOKEN) {
+    redirect("/admin?error=blob-missing");
+  }
+
   try {
     const blob = await put(`gallery/${Date.now()}-${safeUploadName(file.name)}`, file, {
       access: "public",

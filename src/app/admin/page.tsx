@@ -78,6 +78,7 @@ const adminErrors: Record<string, string> = {
   "confirm-delete": "Check the confirmation box before deleting.",
   "invalid-service": "Service details are incomplete or invalid.",
   "invalid-image": "Gallery image details are incomplete or use an unsupported image file.",
+  "blob-missing": "Image uploads need Vercel Blob connected. Add BLOB_READ_WRITE_TOKEN in Vercel environment variables.",
   "upload-failed": "The image could not be uploaded. Check that Vercel Blob storage is connected."
 };
 

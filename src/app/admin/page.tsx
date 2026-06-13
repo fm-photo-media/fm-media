@@ -1,16 +1,8 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import { redirect } from "next/navigation";
-import {
-  createGalleryImage,
-  createService,
-  deleteGalleryImage,
-  deleteInquiry,
-  deleteService,
-  logoutAdmin,
-  updateGalleryImage,
-  updateInquiryContacted,
-  updateService
-} from "@/app/actions";
+import { deleteInquiry, logoutAdmin, updateInquiryContacted } from "@/app/actions";
+import { AdminNotice } from "@/app/admin/admin-fields";
 import { SectionHeading } from "@/components/section-heading";
 import { isAdminAuthenticated } from "@/lib/admin-auth";
 import { prisma } from "@/lib/prisma";
@@ -22,95 +14,18 @@ export const metadata: Metadata = {
   robots: { index: false, follow: false }
 };
 
-function TextInput({
-  name,
-  label,
-  defaultValue,
-  type = "text",
-  required = true
-}: {
-  name: string;
-  label: string;
-  defaultValue?: string | number;
-  type?: string;
-  required?: boolean;
-}) {
-  return (
-    <label className="grid gap-1 text-sm font-medium text-ink">
-      {label}
-      <input
-        name={name}
-        type={type}
-        defaultValue={defaultValue}
-        required={required}
-        className="rounded-md border border-line px-3 py-2 font-normal"
-      />
-    </label>
-  );
-}
-
-function Checkbox({ name, label, defaultChecked }: { name: string; label: string; defaultChecked?: boolean }) {
-  return (
-    <label className="flex items-center gap-2 text-sm font-medium text-ink">
-      <input name={name} type="checkbox" defaultChecked={defaultChecked} className="h-4 w-4 accent-clay" />
-      {label}
-    </label>
-  );
-}
-
-function FileInput({ name, label, required = false }: { name: string; label: string; required?: boolean }) {
-  return (
-    <label className="grid gap-1 text-sm font-medium text-ink">
-      {label}
-      <input
-        name={name}
-        type="file"
-        accept="image/jpeg,image/png,image/webp,image/avif"
-        required={required}
-        className="rounded-md border border-line px-3 py-2 font-normal file:mr-3 file:rounded-full file:border-0 file:bg-ink file:px-3 file:py-1.5 file:text-sm file:font-semibold file:text-white"
-      />
-      <span className="text-xs font-normal text-ink/55">JPEG, PNG, WebP, or AVIF. Max 8 MB.</span>
-    </label>
-  );
-}
-
-const adminErrors: Record<string, string> = {
-  "confirm-delete": "Check the confirmation box before deleting.",
-  "invalid-service": "Service details are incomplete or invalid.",
-  "invalid-image": "Gallery image details are incomplete or use an unsupported image file.",
-  "blob-missing": "Image uploads need Vercel Blob connected. Add BLOB_READ_WRITE_TOKEN in Vercel environment variables.",
-  "upload-failed": "The image could not be uploaded. Check that Vercel Blob storage is connected."
-};
-
-const adminSuccess: Record<string, string> = {
-  "gallery-created": "Gallery image uploaded and added.",
-  "gallery-updated": "Gallery image updated.",
-  "gallery-deleted": "Gallery image deleted."
-};
-
 export default async function AdminPage({ searchParams }: { searchParams?: { error?: string; success?: string } }) {
   if (!(await isAdminAuthenticated())) {
     redirect("/admin/login");
   }
 
-  const [services, images, inquiries] = await Promise.all([
-    prisma.service.findMany({ orderBy: { updatedAt: "desc" } }),
-    prisma.galleryImage.findMany({
-      orderBy: { updatedAt: "desc" },
-      select: {
-        id: true,
-        title: true,
-        alt: true,
-        category: true,
-        width: true,
-        height: true,
-        featured: true,
-        published: true
-      }
-    }),
+  const [serviceCount, galleryCount, inquiryCount, inquiries] = await Promise.all([
+    prisma.service.count(),
+    prisma.galleryImage.count(),
+    prisma.inquiry.count(),
     prisma.inquiry.findMany({
       orderBy: { createdAt: "desc" },
-      take: 25,
+      take: 20,
       select: {
         id: true,
         name: true,
@@ -130,223 +45,45 @@ export default async function AdminPage({ searchParams }: { searchParams?: { err
     })
   ]);
 
-  const adminNav = [
-    { href: "#overview", label: "Overview", copy: "Counts and quick status" },
-    { href: "#inquiries", label: "Inquiries", copy: "Recent booking requests" },
-    { href: "#add-new", label: "Add New", copy: "Create services and images" },
-    { href: "#services", label: "Services", copy: "Packages and pricing" },
-    { href: "#gallery", label: "Gallery", copy: "Portfolio images" }
-  ];
-
   return (
     <main className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
-      <div className="grid gap-6 lg:grid-cols-[250px_1fr]">
-        <aside className="rounded-lg border border-line bg-white p-4 shadow-sm lg:sticky lg:top-24 lg:self-start">
-          <p className="text-xs font-bold uppercase tracking-[0.18em] text-clay">Admin Menu</p>
-          <nav aria-label="Admin sections" className="mt-4 grid gap-2">
-            {adminNav.map((item) => (
-              <a
-                key={item.href}
-                href={item.href}
-                className="focus-ring rounded-md border border-transparent px-3 py-2 text-sm font-semibold text-ink transition hover:border-line hover:bg-mist"
-              >
-                <span className="block">{item.label}</span>
-                <span className="mt-0.5 block text-xs font-normal text-ink/60">{item.copy}</span>
-              </a>
-            ))}
-          </nav>
-          <form action={logoutAdmin} className="mt-5 border-t border-line pt-4">
-            <button className="focus-ring w-full rounded-full border border-line bg-white px-5 py-2 text-sm font-semibold text-ink hover:border-clay">
-              Sign Out
-            </button>
-          </form>
-        </aside>
+      <div className="flex flex-col gap-5 sm:flex-row sm:items-start sm:justify-between">
+        <SectionHeading
+          eyebrow="Admin"
+          title="FM Media dashboard"
+          copy="Review booking requests and jump into services or gallery management."
+        />
+        <form action={logoutAdmin}>
+          <button className="focus-ring rounded-full border border-line bg-white px-5 py-2 text-sm font-semibold text-ink hover:border-clay">
+            Sign Out
+          </button>
+        </form>
+      </div>
 
-        <div className="min-w-0">
-          <SectionHeading
-            eyebrow="Admin"
-            title="Manage services, portfolio images, and shoot requests."
-            copy="Use the sidebar to jump between inquiries, pricing packages, and gallery content. Public pages stay fast while admin work reads and writes directly to PostgreSQL."
-          />
-          {searchParams?.error ? (
-            <p className="mt-4 rounded-md border border-line bg-white px-4 py-3 text-sm font-medium text-clay" role="alert">
-              {adminErrors[searchParams.error] ?? "Something needs attention before saving."}
-            </p>
-          ) : null}
-          {searchParams?.success ? (
-            <p className="mt-4 rounded-md border border-line bg-white px-4 py-3 text-sm font-medium text-ink" role="status">
-              {adminSuccess[searchParams.success] ?? "Saved."}
-            </p>
-          ) : null}
+      <AdminNotice error={searchParams?.error} success={searchParams?.success} />
 
-          <section id="overview" className="mt-8 scroll-mt-24">
-            <h2 className="font-serif text-3xl">Overview</h2>
-            <div className="mt-5 grid gap-4 sm:grid-cols-3">
-              <div className="rounded-lg border border-line bg-white p-5 shadow-sm">
-                <p className="text-sm font-semibold text-ink/60">Recent inquiries</p>
-                <p className="mt-2 font-serif text-4xl text-ink">{inquiries.length}</p>
-              </div>
-              <div className="rounded-lg border border-line bg-white p-5 shadow-sm">
-                <p className="text-sm font-semibold text-ink/60">Services</p>
-                <p className="mt-2 font-serif text-4xl text-ink">{services.length}</p>
-              </div>
-              <div className="rounded-lg border border-line bg-white p-5 shadow-sm">
-                <p className="text-sm font-semibold text-ink/60">Gallery images</p>
-                <p className="mt-2 font-serif text-4xl text-ink">{images.length}</p>
-              </div>
-            </div>
-          </section>
-
-          <section id="add-new" className="mt-12 scroll-mt-24">
-            <div className="mb-5">
-              <h2 className="font-serif text-3xl">Add New</h2>
-              <p className="mt-2 max-w-2xl text-sm leading-6 text-ink/65">
-                Add new package cards and portfolio images here. Existing items can be edited in their own sections below.
-              </p>
-            </div>
-            <div className="grid gap-6 lg:grid-cols-2">
-        <div className="rounded-lg border border-line bg-white p-5 shadow-sm">
-          <h2 className="font-serif text-2xl">Add Service</h2>
-          <form action={createService} className="mt-5 grid gap-4">
-            <TextInput name="title" label="Title" />
-            <TextInput name="slug" label="Slug" />
-            <div className="grid gap-4 sm:grid-cols-2">
-              <TextInput name="category" label="Category" defaultValue="PHOTO" />
-              <TextInput name="priceLabel" label="Display Price" required={false} />
-            </div>
-            <div className="grid gap-4 sm:grid-cols-3">
-              <TextInput name="bestUse" label="Best-Use Label" required={false} />
-              <TextInput name="squareFeet" label="Square Footage" required={false} />
-              <TextInput name="sortOrder" label="Sort Order" type="number" defaultValue={0} />
-            </div>
-            <TextInput name="summary" label="Summary" />
-            <label className="grid gap-1 text-sm font-medium text-ink">
-              Description
-              <textarea name="description" required rows={4} className="rounded-md border border-line px-3 py-2 font-normal" />
-            </label>
-            <div className="grid gap-4 sm:grid-cols-3">
-              <TextInput name="startingAt" label="Starting At" type="number" />
-              <TextInput name="deliverable" label="Deliverable" />
-              <TextInput name="turnaround" label="Turnaround" />
-            </div>
-            <div className="flex flex-wrap gap-5">
-              <Checkbox name="featured" label="Featured" />
-              <Checkbox name="published" label="Published" defaultChecked />
-            </div>
-            <button className="focus-ring w-fit rounded-full bg-ink px-5 py-2 text-sm font-semibold text-white">Add Service</button>
-          </form>
-        </div>
-
-        <div className="rounded-lg border border-line bg-white p-5 shadow-sm">
-          <h2 className="font-serif text-2xl">Add Gallery Image</h2>
-          <form action={createGalleryImage} className="mt-5 grid gap-4">
-            <TextInput name="title" label="Title" />
-            <TextInput name="alt" label="Alt Text" />
-            <TextInput name="category" label="Category" />
-            <FileInput name="imageFile" label="Choose Image File" required />
-            <div className="grid gap-4 sm:grid-cols-2">
-              <TextInput name="width" label="Width" type="number" defaultValue={1600} />
-              <TextInput name="height" label="Height" type="number" defaultValue={1100} />
-            </div>
-            <div className="flex flex-wrap gap-5">
-              <Checkbox name="featured" label="Featured" />
-              <Checkbox name="published" label="Published" defaultChecked />
-            </div>
-            <button className="focus-ring w-fit rounded-full bg-ink px-5 py-2 text-sm font-semibold text-white">Add Image</button>
-          </form>
-        </div>
-            </div>
+      <section className="mt-8 grid gap-4 md:grid-cols-3">
+        {[
+          ["Inquiries", inquiryCount, "#inquiries"],
+          ["Services", serviceCount, "/admin/services"],
+          ["Gallery Images", galleryCount, "/admin/gallery"]
+        ].map(([label, value, href]) => (
+          <Link key={String(label)} href={String(href)} className="focus-ring rounded-lg border border-line bg-white p-5 shadow-sm hover:border-clay">
+            <p className="text-sm font-semibold text-ink/60">{label}</p>
+            <p className="mt-2 font-serif text-4xl text-ink">{value}</p>
+          </Link>
+        ))}
       </section>
 
-      <section id="services" className="mt-12 scroll-mt-24">
-        <h2 className="font-serif text-3xl">Services</h2>
-        <div className="mt-5 grid gap-5">
-          {services.map((service) => (
-            <article key={service.id} className="rounded-lg border border-line bg-white p-5 shadow-sm">
-              <form action={updateService} className="grid gap-4">
-                <input type="hidden" name="id" value={service.id} />
-                <div className="grid gap-4 lg:grid-cols-2">
-                  <TextInput name="title" label="Title" defaultValue={service.title} />
-                  <TextInput name="slug" label="Slug" defaultValue={service.slug} />
-                </div>
-                <div className="grid gap-4 md:grid-cols-2">
-                  <TextInput name="category" label="Category" defaultValue={service.category} />
-                  <TextInput name="priceLabel" label="Display Price" defaultValue={service.priceLabel ?? ""} required={false} />
-                </div>
-                <div className="grid gap-4 md:grid-cols-3">
-                  <TextInput name="bestUse" label="Best-Use Label" defaultValue={service.bestUse ?? ""} required={false} />
-                  <TextInput name="squareFeet" label="Square Footage" defaultValue={service.squareFeet ?? ""} required={false} />
-                  <TextInput name="sortOrder" label="Sort Order" type="number" defaultValue={service.sortOrder} />
-                </div>
-                <TextInput name="summary" label="Summary" defaultValue={service.summary} />
-                <label className="grid gap-1 text-sm font-medium text-ink">
-                  Description
-                  <textarea
-                    name="description"
-                    required
-                    rows={3}
-                    defaultValue={service.description}
-                    className="rounded-md border border-line px-3 py-2 font-normal"
-                  />
-                </label>
-                <div className="grid gap-4 md:grid-cols-3">
-                  <TextInput name="startingAt" label="Starting At" type="number" defaultValue={service.startingAt} />
-                  <TextInput name="deliverable" label="Deliverable" defaultValue={service.deliverable} />
-                  <TextInput name="turnaround" label="Turnaround" defaultValue={service.turnaround} />
-                </div>
-                <div className="flex flex-wrap items-center gap-5">
-                  <Checkbox name="featured" label="Featured" defaultChecked={service.featured} />
-                  <Checkbox name="published" label="Published" defaultChecked={service.published} />
-                  <button className="focus-ring rounded-full bg-ink px-5 py-2 text-sm font-semibold text-white">Save</button>
-                </div>
-              </form>
-              <form action={deleteService} className="mt-3">
-                <input type="hidden" name="id" value={service.id} />
-                <label className="mr-4 inline-flex items-center gap-2 text-sm text-ink/70">
-                  <input name="confirmDelete" type="checkbox" required className="h-4 w-4 accent-clay" />
-                  Confirm delete
-                </label>
-                <button className="focus-ring text-sm font-semibold text-clay">Delete service</button>
-              </form>
-            </article>
-          ))}
-        </div>
-      </section>
-
-      <section id="gallery" className="mt-12 scroll-mt-24">
-        <h2 className="font-serif text-3xl">Gallery Images</h2>
-        <div className="mt-5 grid gap-5">
-          {images.map((image) => (
-            <article key={image.id} className="rounded-lg border border-line bg-white p-5 shadow-sm">
-              <form action={updateGalleryImage} className="grid gap-4">
-                <input type="hidden" name="id" value={image.id} />
-                <div className="grid gap-4 lg:grid-cols-3">
-                  <TextInput name="title" label="Title" defaultValue={image.title} />
-                  <TextInput name="category" label="Category" defaultValue={image.category} />
-                  <FileInput name="imageFile" label="Replace Image File" />
-                </div>
-                <TextInput name="alt" label="Alt Text" defaultValue={image.alt} />
-                <div className="grid gap-4 md:grid-cols-2">
-                  <TextInput name="width" label="Width" type="number" defaultValue={image.width} />
-                  <TextInput name="height" label="Height" type="number" defaultValue={image.height} />
-                </div>
-                <div className="flex flex-wrap items-center gap-5">
-                  <Checkbox name="featured" label="Featured" defaultChecked={image.featured} />
-                  <Checkbox name="published" label="Published" defaultChecked={image.published} />
-                  <button className="focus-ring rounded-full bg-ink px-5 py-2 text-sm font-semibold text-white">Save</button>
-                </div>
-              </form>
-              <form action={deleteGalleryImage} className="mt-3">
-                <input type="hidden" name="id" value={image.id} />
-                <label className="mr-4 inline-flex items-center gap-2 text-sm text-ink/70">
-                  <input name="confirmDelete" type="checkbox" required className="h-4 w-4 accent-clay" />
-                  Confirm delete
-                </label>
-                <button className="focus-ring text-sm font-semibold text-clay">Delete image</button>
-              </form>
-            </article>
-          ))}
-        </div>
+      <section className="mt-8 grid gap-4 md:grid-cols-2">
+        <Link href="/admin/services" className="focus-ring rounded-lg border border-line bg-white p-6 shadow-sm hover:border-clay">
+          <h2 className="font-serif text-2xl text-ink">Manage Services</h2>
+          <p className="mt-2 text-sm leading-6 text-ink/65">Add, edit, publish, feature, or delete service packages.</p>
+        </Link>
+        <Link href="/admin/gallery" className="focus-ring rounded-lg border border-line bg-white p-6 shadow-sm hover:border-clay">
+          <h2 className="font-serif text-2xl text-ink">Manage Gallery</h2>
+          <p className="mt-2 text-sm leading-6 text-ink/65">Upload images, edit portfolio metadata, and choose featured photos.</p>
+        </Link>
       </section>
 
       <section id="inquiries" className="mt-12 scroll-mt-24">
@@ -380,9 +117,7 @@ export default async function AdminPage({ searchParams }: { searchParams?: { err
                     ) : null}
                   </td>
                   <td className="px-4 py-3 text-ink/70">
-                    <span className="font-semibold text-ink">
-                      {inquiry.photoPackage || "No photo package selected"}
-                    </span>
+                    <span className="font-semibold text-ink">{inquiry.photoPackage || "No photo package selected"}</span>
                     <br />
                     {inquiry.videoService}
                     {inquiry.addOns ? (
@@ -412,12 +147,7 @@ export default async function AdminPage({ searchParams }: { searchParams?: { err
                     <form action={updateInquiryContacted} className="flex items-center gap-3">
                       <input type="hidden" name="id" value={inquiry.id} />
                       <label className="flex items-center gap-2 text-sm font-medium text-ink">
-                        <input
-                          name="contacted"
-                          type="checkbox"
-                          defaultChecked={inquiry.status === "CONTACTED"}
-                          className="h-4 w-4 accent-clay"
-                        />
+                        <input name="contacted" type="checkbox" defaultChecked={inquiry.status === "CONTACTED"} className="h-4 w-4 accent-clay" />
                         Yes
                       </label>
                       <button className="focus-ring rounded-full border border-line px-3 py-1 text-xs font-semibold text-ink hover:border-clay">
@@ -432,9 +162,7 @@ export default async function AdminPage({ searchParams }: { searchParams?: { err
                         <input name="confirmDelete" type="checkbox" required className="h-4 w-4 accent-clay" />
                         Confirm
                       </label>
-                      <button className="focus-ring w-fit text-sm font-semibold text-clay">
-                        Delete
-                      </button>
+                      <button className="focus-ring w-fit text-sm font-semibold text-clay">Delete</button>
                     </form>
                   </td>
                 </tr>
@@ -450,8 +178,6 @@ export default async function AdminPage({ searchParams }: { searchParams?: { err
           </table>
         </div>
       </section>
-        </div>
-      </div>
     </main>
   );
 }

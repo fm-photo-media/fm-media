@@ -65,6 +65,14 @@ function isUniqueViolation(error: unknown) {
   return typeof error === "object" && error !== null && "code" in error && error.code === "P2002";
 }
 
+// SEC-27: a raw Prisma error can echo the customer's details, so booking logs keep only its name and code.
+function errorSummary(error: unknown) {
+  if (typeof error !== "object" || error === null) return "unknown error";
+  const name = error instanceof Error ? error.name : "Error";
+  const code = "code" in error && typeof error.code === "string" ? ` ${error.code}` : "";
+  return `${name}${code}`;
+}
+
 async function existingSubmission(submissionKey: string | null) {
   if (!submissionKey) return null;
   return prisma.inquiry.findUnique({ where: { submissionKey }, select: { emailStatus: true } }).catch(() => null);
@@ -350,7 +358,7 @@ export async function createInquiry(_: FormState, formData: FormData): Promise<F
       return bookingResult((await existingSubmission(submissionKey))?.emailStatus ?? "PENDING");
     }
 
-    console.error("[booking] could not save inquiry", error);
+    console.error(`[booking] could not save inquiry: ${errorSummary(error)}`);
     return { status: "error", ok: false, message: BOOKING_MESSAGES.saveFailed };
   }
 
@@ -377,7 +385,9 @@ export async function createInquiry(_: FormState, formData: FormData): Promise<F
 
   await prisma.inquiry
     .update({ where: { id: inquiry.id }, data: { emailStatus, emailError } })
-    .catch((error) => console.error(`[booking] could not record email status for inquiry ${inquiry.id}`, error));
+    .catch((error) =>
+      console.error(`[booking] could not record email status for inquiry ${inquiry.id}: ${errorSummary(error)}`)
+    );
 
   // LEG-1 / Ship condition A1: delete inquiries past the retention period. Throttled to
   // about once an hour, best effort, never throws (auto-purge.ts). It only ever deletes

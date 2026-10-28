@@ -92,3 +92,34 @@ test("seed never deletes or overwrites existing rows, and only inserts missing o
   assert.ok(images.includes(adminUpload));
   assert.equal(images.find((i) => i.imageUrl === existingSeedImage.imageUrl)?.title, "Renamed");
 });
+
+// SEC-15: libpq-style ?host= / ?hostaddr= override the URL's host, so they must be refused.
+test("the guard refuses host and hostaddr query parameters, in any case", () => {
+  for (const query of ["host=ep-cool.neon.tech", "HOST=ep-cool.neon.tech", "hostaddr=203.0.113.9", "HostAddr=203.0.113.9", "sslmode=disable&Host=evil"]) {
+    const url = `postgresql://u:p@localhost:5432/db?${query}`;
+    assert.equal(isLocalDatabaseUrl(url), false, query);
+    assert.throws(() => assertSeedAllowed({ NODE_ENV: "development", DATABASE_URL: url }), /local/i, query);
+  }
+  // Ordinary local parameters are still fine.
+  assert.equal(isLocalDatabaseUrl("postgresql://u:p@127.0.0.1:5999/postgres?sslmode=disable&pgbouncer=true"), true);
+});
+
+test("SEC-15: seeded gallery images are created unpublished unless the seed row says otherwise", async () => {
+  type PubImg = { imageUrl: string; title: string; published?: boolean };
+  const created: PubImg[] = [];
+  const db: SeedDb<Svc, PubImg> = {
+    service: { findUnique: async () => null, create: async ({ data }) => data },
+    galleryImage: {
+      findFirst: async () => null,
+      create: async ({ data }) => {
+        created.push(data);
+        return data;
+      }
+    }
+  };
+  await seedInsertOnly(db, [], [
+    { imageUrl: "/images/a.jpg", title: "A" },
+    { imageUrl: "/images/b.jpg", title: "B", published: true }
+  ]);
+  assert.deepEqual(created.map((i) => i.published), [false, true]);
+});

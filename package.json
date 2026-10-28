@@ -12,7 +12,7 @@
     "prisma:migrate": "prisma migrate dev",
     "prisma:deploy": "prisma migrate deploy",
     "prisma:seed": "tsx prisma/seed.ts",
-    "test": "tsx --test prisma/seed-lib.test.ts src/lib/validation.test.ts"
+    "test": "tsx --test prisma/seed-lib.test.ts src/lib/validation.test.ts src/lib/booking-time.test.ts src/lib/rate-limit.test.ts src/lib/email.test.ts"
   },
   "dependencies": {
     "@prisma/client": "^5.22.0",

@@ -7,7 +7,6 @@ Fast full-stack real estate photography service website built with Next.js App R
 - `Home`, `Services`, `Pricing`, and `Portfolio` are static-first server pages with ISR.
 - `About` is fully static.
 - `Contact` uses a small client form for submission state and saves inquiries through a server action.
-- `/api/inquiries` also accepts JSON booking requests for integrations.
 - `Admin` is dynamic and handles CRUD for services and gallery images plus inquiry review.
 - Admin gallery uploads use Vercel Blob storage and save public image URLs in PostgreSQL.
 - Images render through `next/image` with AVIF/WebP support and responsive sizing.

@@ -5,6 +5,7 @@ import { deleteInquiry, logoutAdmin, updateInquiryContacted } from "@/app/action
 import { AdminNotice } from "@/app/admin/admin-fields";
 import { SectionHeading } from "@/components/section-heading";
 import { isAdminAuthenticated } from "@/lib/admin-auth";
+import { formatStoredDate } from "@/lib/booking-time";
 import { prisma } from "@/lib/prisma";
 
 export const dynamic = "force-dynamic";
@@ -40,6 +41,8 @@ export default async function AdminPage({ searchParams }: { searchParams?: { err
         firstShootOffer: true,
         preferredDate: true,
         preferredTime: true,
+        preferredWindow: true,
+        emailStatus: true,
         status: true
       }
     })
@@ -104,7 +107,18 @@ export default async function AdminPage({ searchParams }: { searchParams?: { err
             <tbody className="divide-y divide-line">
               {inquiries.map((inquiry) => (
                 <tr key={inquiry.id}>
-                  <td className="px-4 py-3 font-medium text-ink">{inquiry.name}</td>
+                  <td className="px-4 py-3 font-medium text-ink">
+                    {inquiry.name}
+                    {/* QA-4: the owner never got an email for this one. Batch 3 polishes this view. */}
+                    {inquiry.emailStatus === "FAILED" ? (
+                      <>
+                        <br />
+                        <span className="mt-1 inline-block rounded border border-clay px-1.5 py-0.5 text-xs font-semibold text-clay">
+                          Email failed: follow up
+                        </span>
+                      </>
+                    ) : null}
+                  </td>
                   <td className="px-4 py-3 text-ink/70">
                     {inquiry.email}
                     <br />
@@ -134,9 +148,10 @@ export default async function AdminPage({ searchParams }: { searchParams?: { err
                     ) : null}
                   </td>
                   <td className="px-4 py-3 text-ink/70">
-                    {inquiry.preferredDate.toLocaleDateString()}
+                    {formatStoredDate(inquiry.preferredDate)}
                     <br />
-                    {inquiry.preferredTime}
+                    {inquiry.preferredWindow}
+                    {inquiry.preferredTime !== "Flexible" ? ` at ${inquiry.preferredTime}` : null}
                   </td>
                   <td className="px-4 py-3 text-ink/70">
                     {inquiry.propertyAddress}

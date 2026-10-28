@@ -1,100 +1,143 @@
 import { z } from "zod";
+import { BOOKING_LIMITS } from "@/lib/booking-limits";
+import { TIME_WINDOWS, checkBookingSlot, isValidTimeInput, storedDateFromInput } from "@/lib/booking-time";
 
-function todayAtMidnight() {
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  return today;
+// QA-2: the booking form's options come from published Service rows.
+// `value` is the service slug the form posts; `label` ("Basic - $100") is what gets stored.
+export type BookingOption = { value: string; label: string };
+export type BookingOptions = {
+  photoPackages: BookingOption[];
+  addOns: BookingOption[];
+  videoServices: BookingOption[];
+};
+
+export const NO_PHOTO_PACKAGE = "No photo package selected";
+export const STALE_OPTION = "That option is no longer offered. Please choose again.";
+
+export { BOOKING_LIMITS };
+
+const text = (max: number, tooLong = `Keep this under ${max} characters.`) => z.string().trim().max(max, tooLong);
+
+// Multi-select values arrive comma-joined (slugs never contain commas). This keeps
+// collections out of zod 3 (see SEC-9) and caps how many values are looked at.
+function slugList(value: string) {
+  return value
+    .split(",")
+    .map((item) => item.trim())
+    .filter(Boolean)
+    .slice(0, 20);
 }
 
-function dateFromInput(value: string) {
-  const [year, month, day] = value.split("-").map(Number);
-  return new Date(year, month - 1, day);
+function squareFeetLabel(value: string) {
+  const digits = value.replace(/[,\s]/g, "").replace(/sq\.?ft\.?$/i, "");
+  if (!digits) return "Not provided";
+  return `${Number(digits).toLocaleString("en-US")} sq ft`;
 }
 
-export const inquirySchema = z
-  .object({
-    name: z.string().trim().min(2, "Enter your name."),
-    email: z.string().trim().email("Enter a valid email."),
-    phone: z
-      .string()
-      .trim()
-      .refine((value) => value.replace(/\D/g, "").length >= 10, "Enter a complete phone number."),
-    agencyName: z.string().trim().optional(),
-    propertyAddress: z.string().trim().min(6, "Enter the property address."),
-    propertySize: z.string().trim().optional().default("Not provided"),
-    photoPackage: z.string().trim().optional().default("No photo package selected"),
-    addOns: z.string().trim().optional().default(""),
-    videoService: z.string().trim().optional().default("None"),
-    // Only a ticked checkbox ("on") or JSON `true` claims the offer (QA-1, LEG-4, SEC-13).
-    firstShootOffer: z.preprocess((value) => value === true || value === "on", z.boolean()),
-    shootType: z.string().trim().optional().default("Listing Media Package"),
-    preferredDate: z
-      .string()
-      .trim()
-      .regex(/^\d{4}-\d{2}-\d{2}$/, "Choose a date.")
-      .transform(dateFromInput)
-      .refine((date) => date >= todayAtMidnight(), "Choose today or a future date."),
-    preferredTime: z
-      .string()
-      .trim()
-      .regex(/^([01]\d|2[0-3]):[0-5]\d$/, "Choose a preferred time."),
-    message: z.string().trim().min(10, "Tell us a little about the shoot.")
-  })
-  .superRefine((value, ctx) => {
-    const hasPackage =
-      value.photoPackage &&
-      value.photoPackage !== "No photo package needed" &&
-      value.photoPackage !== "No photo package selected";
-    const hasAddOns = Boolean(value.addOns?.trim());
-    const hasVideo = Boolean(value.videoService?.trim() && value.videoService !== "None");
+export function makeInquirySchema({ options, now = () => new Date() }: { options: BookingOptions; now?: () => Date }) {
+  const lookup = (list: BookingOption[], value: string) => list.find((option) => option.value === value)?.label;
 
-    if (!hasPackage && !hasAddOns && !hasVideo) {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        path: ["services"],
-        message: "Please select at least one service before booking."
+  return z
+    .object({
+      name: text(BOOKING_LIMITS.name).pipe(z.string().min(2, "Enter your name.")),
+      email: text(BOOKING_LIMITS.email).pipe(z.string().email("Enter a valid email.")),
+      phone: text(BOOKING_LIMITS.phone, "Enter a phone number under 30 characters.").refine(
+        (value) => value.replace(/\D/g, "").length >= 10,
+        "Enter a complete phone number."
+      ),
+      agencyName: text(BOOKING_LIMITS.agencyName).optional(),
+      propertyAddress: text(BOOKING_LIMITS.propertyAddress).pipe(z.string().min(6, "Enter the property address.")),
+      squareFeet: text(BOOKING_LIMITS.squareFeet)
+        .optional()
+        .default("")
+        .refine((value) => {
+          const digits = value.replace(/[,\s]/g, "").replace(/sq\.?ft\.?$/i, "");
+          return !digits || (/^\d+$/.test(digits) && Number(digits) >= 100 && Number(digits) <= 100000);
+        }, "Enter the approximate square footage as a number, like 1800."),
+      photoPackage: text(100).optional().default(""),
+      addOns: text(500).optional().default(""),
+      videoService: text(500).optional().default(""),
+      // Only a ticked checkbox ("on") or JSON `true` claims the offer (QA-1, LEG-4, SEC-13).
+      firstShootOffer: z.preprocess((value) => value === true || value === "on", z.boolean()),
+      shootType: text(120).optional().default("Listing Media Package"),
+      preferredDate: text(10),
+      preferredTime: text(5)
+        .optional()
+        .default("")
+        .refine((value) => !value || isValidTimeInput(value), "Choose a time like 09:30, or leave it blank."),
+      preferredWindow: z.enum(TIME_WINDOWS, { message: "Choose a time window." }).optional().default("Flexible"),
+      message: text(BOOKING_LIMITS.message).pipe(z.string().min(10, "Tell us a little about the shoot."))
+    })
+    .superRefine((value, ctx) => {
+      const issue = (path: string, message: string) => ctx.addIssue({ code: z.ZodIssueCode.custom, path: [path], message });
+
+      if (value.photoPackage && !lookup(options.photoPackages, value.photoPackage)) issue("photoPackage", STALE_OPTION);
+      if (slugList(value.addOns).some((slug) => !lookup(options.addOns, slug))) issue("addOns", STALE_OPTION);
+      if (slugList(value.videoService).some((slug) => !lookup(options.videoServices, slug))) issue("videoService", STALE_OPTION);
+
+      const hasPackage = Boolean(value.photoPackage);
+      if (!hasPackage && !slugList(value.addOns).length && !slugList(value.videoService).length) {
+        issue("services", "Please select at least one service before booking.");
+      }
+
+      // QA-17: the terms say "with any photo package".
+      if (value.firstShootOffer && !hasPackage) {
+        issue("firstShootOffer", "The free drone photos come with a photo package. Choose a package above or untick this box.");
+      }
+
+      const slot = checkBookingSlot({
+        date: value.preferredDate,
+        time: value.preferredTime,
+        window: value.preferredWindow,
+        now: now()
       });
-    }
+      if (slot) issue(slot.field, slot.message);
+    })
+    .transform(({ squareFeet, ...value }) => ({
+      ...value,
+      propertySize: squareFeetLabel(squareFeet),
+      photoPackage: lookup(options.photoPackages, value.photoPackage) ?? NO_PHOTO_PACKAGE,
+      addOns: slugList(value.addOns)
+        .map((slug) => lookup(options.addOns, slug))
+        .join(", "),
+      videoService:
+        slugList(value.videoService)
+          .map((slug) => lookup(options.videoServices, slug))
+          .join(", ") || "None",
+      preferredDate: storedDateFromInput(value.preferredDate),
+      preferredTime: value.preferredTime || "Flexible"
+    }));
+}
 
-    const [hours, minutes] = value.preferredTime.split(":").map(Number);
-    const scheduledAt = new Date(value.preferredDate);
-    scheduledAt.setHours(hours, minutes, 0, 0);
-
-    if (scheduledAt.getTime() < Date.now() + 90 * 60 * 1000) {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        path: ["preferredTime"],
-        message: "Choose a time at least 90 minutes from now."
-      });
-    }
-  });
+export type InquiryInput = z.output<ReturnType<typeof makeInquirySchema>>;
 
 export const serviceSchema = z.object({
-  title: z.string().trim().min(2),
+  title: z.string().trim().min(2).max(120),
   slug: z
     .string()
     .trim()
     .min(2)
+    .max(80)
     .regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/, "Use a URL-friendly slug."),
-  category: z.string().trim().min(2).default("PHOTO"),
-  priceLabel: z.string().trim().optional(),
-  bestUse: z.string().trim().optional(),
-  squareFeet: z.string().trim().optional(),
-  summary: z.string().trim().min(10),
-  description: z.string().trim().min(20),
+  category: z.string().trim().min(2).max(40).default("PHOTO"),
+  priceLabel: z.string().trim().max(60).optional(),
+  bestUse: z.string().trim().max(160).optional(),
+  squareFeet: z.string().trim().max(80).optional(),
+  summary: z.string().trim().min(10).max(600),
+  description: z.string().trim().min(20).max(4000),
   startingAt: z.coerce.number().int().min(0),
-  deliverable: z.string().trim().min(2),
-  turnaround: z.string().trim().min(2),
+  deliverable: z.string().trim().min(2).max(300),
+  turnaround: z.string().trim().min(2).max(160),
   sortOrder: z.coerce.number().int().min(0).default(0),
   featured: z.coerce.boolean().optional().default(false),
   published: z.coerce.boolean().optional().default(false)
 });
 
 export const galleryImageSchema = z.object({
-  title: z.string().trim().min(2),
-  alt: z.string().trim().min(8),
-  category: z.string().trim().min(2),
-  imageUrl: z.string().trim().refine((value) => {
+  title: z.string().trim().min(2).max(160),
+  alt: z.string().trim().min(8).max(400),
+  category: z.string().trim().min(2).max(60),
+  imageUrl: z.string().trim().max(2048).refine((value) => {
     if (value.startsWith("/images/")) {
       return true;
     }

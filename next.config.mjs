@@ -2,7 +2,11 @@
 const nextConfig = {
   experimental: {
     serverActions: {
-      bodySizeLimit: "10mb"
+      // SEC-4: was 10mb for every action, public ones included. 4.5mb is Vercel's own
+      // request cap and still fits the admin path that posts images <= 4 MB through a
+      // server action (larger ones go browser -> Blob). Lower it to ~1mb in batch 3 once
+      // image replacement uses the client upload path too (QA-6).
+      bodySizeLimit: "4.5mb"
     }
   },
   async headers() {

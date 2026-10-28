@@ -1,14 +1,16 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
-import { useFormState, useFormStatus } from "react-dom";
+import { useEffect, useMemo, useRef, useState, useTransition, type FormEvent } from "react";
+import { useFormState } from "react-dom";
 import { createInquiry, type FormState } from "@/app/actions";
+import { BOOKING_LIMITS } from "@/lib/booking-limits";
+import { MIN_LEAD_MINUTES, TIME_WINDOWS, chicagoToday, chicagoWallClock } from "@/lib/booking-time";
+import type { BookingOptions } from "@/lib/validation";
 
-const initialState: FormState = { ok: false, message: "" };
+const initialState: FormState = { status: "idle", ok: false, message: "" };
 const weekdays = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
-const photoPackages = ["Basic - $100", "Standard - $135", "Premium - $200", "Luxury - $250-$400+"];
-const addOns = ["Drone Photos - $75", "Drone Video - $125", "Floor Plans - $50"];
-const videoServices = ["Basic Walkthrough - $150", "Cinematic Video - $250", "Agent Intro Video - $125"];
+const PHONE_DISPLAY = "(312) 375-5209";
+const PHONE_E164 = "+13123755209";
 
 function formatDateValue(date: Date) {
   const year = date.getFullYear();
@@ -31,17 +33,9 @@ function formatDisplayDate(value: string) {
   }).format(new Date(year, month - 1, day));
 }
 
+// QA-3: "today" and the 90-minute cut-off are Chicago wall-clock values.
 function bookingCutoff() {
-  return new Date(Date.now() + 90 * 60 * 1000);
-}
-
-function minimumBookingTime() {
-  const cutoff = bookingCutoff();
-  return `${String(cutoff.getHours()).padStart(2, "0")}:${String(cutoff.getMinutes()).padStart(2, "0")}`;
-}
-
-function cutoffDateValue() {
-  return formatDateValue(bookingCutoff());
+  return chicagoWallClock(new Date(Date.now() + MIN_LEAD_MINUTES * 60 * 1000));
 }
 
 function formatButtonDate(date: Date) {
@@ -53,18 +47,43 @@ function formatButtonDate(date: Date) {
   }).format(date);
 }
 
-function startOfToday() {
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  return today;
+function newSubmissionKey() {
+  if (typeof crypto !== "undefined" && "randomUUID" in crypto) {
+    return crypto.randomUUID();
+  }
+  return `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 12)}`;
 }
 
-function FieldError({ message }: { message?: string }) {
+function FieldError({ id, message }: { id: string; message?: string }) {
   return message ? (
-    <p className="text-sm font-medium text-clay" role="alert">
+    <p id={id} className="text-sm font-medium text-clay">
       {message}
     </p>
   ) : null;
+}
+
+// Error wiring for a control: aria-invalid, aria-describedby and a marker the
+// form uses to focus the first error after a failed submit (QA-5, QA-11c).
+function errorProps(name: string, error?: string, hintId?: string) {
+  const describedBy = [error ? `${name}-error` : null, hintId].filter(Boolean).join(" ");
+  return {
+    "aria-invalid": error ? true : undefined,
+    "aria-describedby": describedBy || undefined,
+    "data-error": error ? "true" : undefined
+  } as const;
+}
+
+function CallOrText() {
+  return (
+    <p className="flex flex-wrap gap-x-4 gap-y-1 text-sm">
+      <a href={"tel:" + PHONE_E164} className="focus-ring font-semibold text-ink underline">
+        Call {PHONE_DISPLAY}
+      </a>
+      <a href={"sms:" + PHONE_E164} className="focus-ring font-semibold text-ink underline">
+        Text {PHONE_DISPLAY}
+      </a>
+    </p>
+  );
 }
 
 function BookingCalendar({
@@ -78,14 +97,17 @@ function BookingCalendar({
   selectedDate: string;
   onSelectDate: (value: string) => void;
 }) {
-  const today = useMemo(() => startOfToday(), []);
-  const cutoff = useMemo(() => bookingCutoff(), []);
-  const [visibleMonth, setVisibleMonth] = useState(() => new Date(today.getFullYear(), today.getMonth(), 1));
+  const today = useMemo(() => chicagoToday(new Date()), []);
+  const cutoffDate = useMemo(() => bookingCutoff().date, []);
+  const [todayYear, todayMonth] = today.split("-").map(Number);
+  const [visibleMonth, setVisibleMonth] = useState(() => new Date(todayYear, todayMonth - 1, 1));
 
   useEffect(() => {
-    onSelectDate("");
-    setVisibleMonth(new Date(today.getFullYear(), today.getMonth(), 1));
-  }, [resetSignal, today, onSelectDate]);
+    if (resetSignal > 0) {
+      onSelectDate("");
+      setVisibleMonth(new Date(todayYear, todayMonth - 1, 1));
+    }
+  }, [resetSignal, todayYear, todayMonth, onSelectDate]);
 
   const monthLabel = new Intl.DateTimeFormat("en", { month: "long", year: "numeric" }).format(visibleMonth);
   const days = useMemo(() => {
@@ -104,20 +126,29 @@ function BookingCalendar({
   }
 
   return (
-    <div className="mx-auto w-full max-w-[21rem] rounded-lg border border-line bg-mist p-3">
-      <input type="text" name="preferredDate" value={selectedDate} required readOnly className="sr-only" tabIndex={-1} />
+    <div
+      id="preferredDate"
+      role="group"
+      aria-labelledby="preferredDate-label"
+      tabIndex={-1}
+      {...errorProps("preferredDate", error)}
+      className="focus-ring mx-auto w-full max-w-[21rem] rounded-lg border border-line bg-mist p-3"
+    >
+      <input type="hidden" name="preferredDate" value={selectedDate} />
       <div className="flex items-center justify-between gap-3">
         <div>
-          <p className="text-xs font-semibold text-ink">Preferred Date</p>
-          <p className="mt-0.5 text-xs text-ink/65">{formatDisplayDate(selectedDate)}</p>
+          <p id="preferredDate-label" className="text-xs font-semibold text-ink">
+            Preferred Date
+          </p>
+          <p className="mt-0.5 text-xs text-ink/65" aria-live="polite">
+            {formatDisplayDate(selectedDate)}
+          </p>
         </div>
         <div className="flex gap-2">
           <button
             type="button"
             onClick={() => moveMonth(-1)}
-            disabled={
-              visibleMonth.getFullYear() === today.getFullYear() && visibleMonth.getMonth() === today.getMonth()
-            }
+            disabled={visibleMonth.getFullYear() === todayYear && visibleMonth.getMonth() === todayMonth - 1}
             className="focus-ring grid h-8 w-8 place-items-center rounded-full border border-line bg-white text-base leading-none text-ink disabled:cursor-not-allowed disabled:opacity-35"
             aria-label="Previous month"
           >
@@ -148,9 +179,8 @@ function BookingCalendar({
 
           const value = formatDateValue(date);
           const isSelected = selectedDate === value;
-          const endOfDay = new Date(date);
-          endOfDay.setHours(23, 59, 59, 999);
-          const isPast = date < today || endOfDay < cutoff;
+          // Today stays bookable while "now + 90 minutes" is still today in Chicago.
+          const isPast = value < today || value < cutoffDate;
           const label = `${isSelected ? "Selected, " : ""}${formatButtonDate(date)}`;
 
           return (
@@ -172,41 +202,48 @@ function BookingCalendar({
           );
         })}
       </div>
-      <FieldError message={error} />
+      <FieldError id="preferredDate-error" message={error} />
     </div>
   );
 }
 
-function SubmitButton() {
-  const { pending } = useFormStatus();
-
-  return (
-    <button
-      type="submit"
-      disabled={pending}
-      className="focus-ring rounded-full bg-ink px-6 py-3 text-sm font-semibold text-white transition hover:bg-clay disabled:cursor-not-allowed disabled:opacity-60"
-    >
-      {pending ? "Sending..." : "Request Availability"}
-    </button>
-  );
-}
-
-export function ContactForm() {
+export function ContactForm({ options }: { options: BookingOptions }) {
   const [state, formAction] = useFormState(createInquiry, initialState);
+  const [isPending, startTransition] = useTransition();
   const formRef = useRef<HTMLFormElement>(null);
+  const statusRef = useRef<HTMLDivElement>(null);
+  // SEC-4 / QA-10: block a second submit synchronously, before React re-renders.
+  const submittingRef = useRef(false);
+  // One key per booking attempt; the server saves at most one inquiry per key.
+  const submissionKeyRef = useRef<string | null>(null);
   const [resetSignal, setResetSignal] = useState(0);
   const [selectedDate, setSelectedDate] = useState("");
   const [selectedTime, setSelectedTime] = useState("");
-  const minTime = selectedDate && selectedDate === cutoffDateValue() ? minimumBookingTime() : undefined;
+  const cutoff = bookingCutoff();
+  const minTime = selectedDate && selectedDate === cutoff.date ? cutoff.time : undefined;
+  const fields = state.fields ?? {};
 
   useEffect(() => {
+    if (state.status === "idle") {
+      return;
+    }
+
+    submittingRef.current = false;
+
     if (state.ok) {
+      // Saved (with or without the email): start a fresh booking.
+      submissionKeyRef.current = null;
       formRef.current?.reset();
       setSelectedDate("");
       setSelectedTime("");
       setResetSignal((value) => value + 1);
     }
-  }, [state.ok, state.message]);
+
+    // QA-5 / QA-11c: inputs keep their values (the form is never auto-reset on
+    // error); move focus to the first invalid control, or to the status message.
+    const firstError = state.fields ? formRef.current?.querySelector<HTMLElement>('[data-error="true"]') : null;
+    (firstError ?? statusRef.current)?.focus();
+  }, [state]);
 
   useEffect(() => {
     if (minTime && selectedTime && selectedTime < minTime) {
@@ -214,115 +251,284 @@ export function ContactForm() {
     }
   }, [minTime, selectedTime]);
 
+  function handleSubmit(event: FormEvent<HTMLFormElement>) {
+    // Submitting through startTransition (instead of the form `action`) stops
+    // React from clearing every field after the action returns.
+    event.preventDefault();
+
+    if (submittingRef.current) {
+      return;
+    }
+
+    submittingRef.current = true;
+    submissionKeyRef.current ??= newSubmissionKey();
+    const formData = new FormData(event.currentTarget);
+    formData.set("submissionKey", submissionKeyRef.current);
+    startTransition(() => formAction(formData));
+  }
+
+  const statusTone = state.status === "sent" ? "text-moss" : "text-clay";
+
   return (
-    <form ref={formRef} action={formAction} className="grid min-w-0 gap-4 rounded-lg border border-line bg-white p-4 shadow-soft sm:p-6">
+    <form
+      ref={formRef}
+      action={formAction}
+      onSubmit={handleSubmit}
+      className="relative grid min-w-0 gap-4 rounded-lg border border-line bg-white p-4 shadow-soft sm:p-6"
+    >
+      {/* SEC-4 honeypot: hidden from people and assistive tech; bots fill it. */}
+      <div aria-hidden="true" className="sr-only">
+        <label>
+          Website (leave this empty)
+          <input name="website" type="text" tabIndex={-1} autoComplete="off" defaultValue="" />
+        </label>
+      </div>
       <div className="grid gap-4 sm:grid-cols-2">
         <label className="grid gap-2 text-sm font-medium text-ink">
           Name
-          <input name="name" autoComplete="name" required className="rounded-md border border-line px-3 py-2" />
-          <FieldError message={state.fields?.name} />
+          <input
+            id="name"
+            name="name"
+            autoComplete="name"
+            required
+            maxLength={BOOKING_LIMITS.name}
+            {...errorProps("name", fields.name)}
+            className="rounded-md border border-line px-3 py-2"
+          />
+          <FieldError id="name-error" message={fields.name} />
         </label>
         <label className="grid gap-2 text-sm font-medium text-ink">
           Email
-          <input name="email" type="email" autoComplete="email" required className="rounded-md border border-line px-3 py-2" />
-          <FieldError message={state.fields?.email} />
+          <input
+            id="email"
+            name="email"
+            type="email"
+            autoComplete="email"
+            required
+            maxLength={BOOKING_LIMITS.email}
+            {...errorProps("email", fields.email)}
+            className="rounded-md border border-line px-3 py-2"
+          />
+          <FieldError id="email-error" message={fields.email} />
         </label>
       </div>
       <div className="grid gap-4 sm:grid-cols-2">
         <label className="grid gap-2 text-sm font-medium text-ink">
           Phone
-          <input name="phone" type="tel" autoComplete="tel" required className="rounded-md border border-line px-3 py-2" />
-          <FieldError message={state.fields?.phone} />
-        </label>
-        <label className="grid gap-2 text-sm font-medium text-ink">
-          Preferred Time
           <input
-            name="preferredTime"
-            type="time"
+            id="phone"
+            name="phone"
+            type="tel"
+            autoComplete="tel"
             required
-            min={minTime}
-            value={selectedTime}
-            onChange={(event) => setSelectedTime(event.target.value)}
+            maxLength={BOOKING_LIMITS.phone}
+            {...errorProps("phone", fields.phone)}
             className="rounded-md border border-line px-3 py-2"
           />
-          {minTime ? <p className="text-xs text-ink/60">Today must be booked at least 90 minutes out.</p> : null}
-          <FieldError message={state.fields?.preferredTime} />
+          <FieldError id="phone-error" message={fields.phone} />
+        </label>
+        <label className="grid gap-2 text-sm font-medium text-ink">
+          Realtor / Agency Name
+          <input
+            id="agencyName"
+            name="agencyName"
+            autoComplete="organization"
+            maxLength={BOOKING_LIMITS.agencyName}
+            {...errorProps("agencyName", fields.agencyName)}
+            className="rounded-md border border-line px-3 py-2"
+          />
+          <FieldError id="agencyName-error" message={fields.agencyName} />
         </label>
       </div>
-      <label className="grid gap-2 text-sm font-medium text-ink">
-        Realtor / Agency Name
-        <input name="agencyName" autoComplete="organization" className="rounded-md border border-line px-3 py-2" />
-        <FieldError message={state.fields?.agencyName} />
-      </label>
-      <label className="grid gap-2 text-sm font-medium text-ink">
-        Property Address
-        <input name="propertyAddress" autoComplete="street-address" required className="rounded-md border border-line px-3 py-2" />
-        <FieldError message={state.fields?.propertyAddress} />
-      </label>
+      <div className="grid gap-4 sm:grid-cols-[2fr_1fr]">
+        <label className="grid gap-2 text-sm font-medium text-ink">
+          Property Address
+          <input
+            id="propertyAddress"
+            name="propertyAddress"
+            autoComplete="street-address"
+            required
+            maxLength={BOOKING_LIMITS.propertyAddress}
+            {...errorProps("propertyAddress", fields.propertyAddress)}
+            className="rounded-md border border-line px-3 py-2"
+          />
+          <FieldError id="propertyAddress-error" message={fields.propertyAddress} />
+        </label>
+        <label className="grid gap-2 text-sm font-medium text-ink">
+          Approx. sq ft (optional)
+          <input
+            id="squareFeet"
+            name="squareFeet"
+            inputMode="numeric"
+            placeholder="e.g. 1800"
+            maxLength={BOOKING_LIMITS.squareFeet}
+            {...errorProps("squareFeet", fields.squareFeet)}
+            className="rounded-md border border-line px-3 py-2"
+          />
+          <FieldError id="squareFeet-error" message={fields.squareFeet} />
+        </label>
+      </div>
       <BookingCalendar
-        error={state.fields?.preferredDate}
+        error={fields.preferredDate}
         resetSignal={resetSignal}
         selectedDate={selectedDate}
         onSelectDate={setSelectedDate}
       />
       <fieldset className="grid gap-3 rounded-lg border border-line p-4">
-        <legend className="px-1 text-sm font-semibold text-ink">Photo Package Optional</legend>
-        <p className="text-sm leading-6 text-ink/65">
+        <legend className="px-1 text-sm font-semibold text-ink">Preferred time window (optional)</legend>
+        <div className="flex flex-wrap gap-x-5 gap-y-2">
+          {TIME_WINDOWS.map((window, index) => (
+            <label key={window} className="flex items-center gap-2 text-sm font-medium text-ink/80">
+              <input
+                id={index === 0 ? "preferredWindow" : undefined}
+                name="preferredWindow"
+                type="radio"
+                value={window}
+                defaultChecked={window === "Flexible"}
+                {...(index === 0 ? errorProps("preferredWindow", fields.preferredWindow) : {})}
+                className="h-4 w-4 accent-clay"
+              />
+              {window}
+            </label>
+          ))}
+        </div>
+        <FieldError id="preferredWindow-error" message={fields.preferredWindow} />
+        <label className="grid max-w-xs gap-2 text-sm font-medium text-ink">
+          Exact start time (optional)
+          <input
+            id="preferredTime"
+            name="preferredTime"
+            type="time"
+            min={minTime}
+            value={selectedTime}
+            onChange={(event) => setSelectedTime(event.target.value)}
+            {...errorProps("preferredTime", fields.preferredTime, minTime ? "preferredTime-hint" : undefined)}
+            className="rounded-md border border-line px-3 py-2"
+          />
+          {minTime ? (
+            <p id="preferredTime-hint" className="text-xs text-ink/60">
+              Today must be booked at least 90 minutes out (Chicago time).
+            </p>
+          ) : null}
+          <FieldError id="preferredTime-error" message={fields.preferredTime} />
+        </label>
+      </fieldset>
+      <fieldset className="grid gap-3 rounded-lg border border-line p-4">
+        <legend className="px-1 text-sm font-semibold text-ink">Photo Package (optional)</legend>
+        <p id="photoPackage-hint" className="text-sm leading-6 text-ink/65">
           Choose a photo package, add-ons, video service, or any combination that fits the property.
         </p>
-        <select name="photoPackage" className="rounded-md border border-line px-3 py-2 text-sm">
-          <option>No photo package needed</option>
-          {photoPackages.map((item) => (
-            <option key={item}>{item}</option>
-          ))}
-        </select>
-        <FieldError message={state.fields?.photoPackage || state.fields?.services} />
+        <label className="grid gap-2 text-sm font-medium text-ink">
+          Photo package
+          <select
+            id="photoPackage"
+            name="photoPackage"
+            defaultValue=""
+            {...errorProps(
+              fields.photoPackage ? "photoPackage" : "services",
+              fields.photoPackage || fields.services,
+              "photoPackage-hint"
+            )}
+            className="rounded-md border border-line px-3 py-2 text-sm font-normal"
+          >
+            <option value="">No photo package needed</option>
+            {options.photoPackages.map((item) => (
+              <option key={item.value} value={item.value}>
+                {item.label}
+              </option>
+            ))}
+          </select>
+        </label>
+        <FieldError id={fields.photoPackage ? "photoPackage-error" : "services-error"} message={fields.photoPackage || fields.services} />
       </fieldset>
-      <fieldset className="grid gap-3 rounded-lg border border-line p-4">
-        <legend className="px-1 text-sm font-semibold text-ink">Add-Ons</legend>
-        <div className="grid gap-2 sm:grid-cols-3">
-          {addOns.map((item) => (
-            <label key={item} className="flex items-center gap-2 text-sm font-medium text-ink/80">
-              <input name="addOns" type="checkbox" value={item} className="h-4 w-4 accent-clay" />
-              {item}
-            </label>
-          ))}
-        </div>
-        <FieldError message={state.fields?.addOns} />
-      </fieldset>
-      <label className="flex items-start gap-3 rounded-lg border border-line bg-mist p-4 text-sm text-ink">
-        <input name="firstShootOffer" type="checkbox" className="mt-1 h-4 w-4 accent-clay" />
-        <span>
-          <span className="font-semibold">This is my first shoot with FM Media.</span>
-          <span className="mt-1 block text-ink/70">
-            New clients: tick to claim free drone photos with your photo package.
+      {options.addOns.length ? (
+        <fieldset className="grid gap-3 rounded-lg border border-line p-4">
+          <legend className="px-1 text-sm font-semibold text-ink">Add-Ons</legend>
+          <div className="grid gap-2 sm:grid-cols-3">
+            {options.addOns.map((item, index) => (
+              <label key={item.value} className="flex items-center gap-2 text-sm font-medium text-ink/80">
+                <input
+                  name="addOns"
+                  type="checkbox"
+                  value={item.value}
+                  {...(index === 0 ? errorProps("addOns", fields.addOns) : {})}
+                  className="h-4 w-4 accent-clay"
+                />
+                {item.label}
+              </label>
+            ))}
+          </div>
+          <FieldError id="addOns-error" message={fields.addOns} />
+        </fieldset>
+      ) : null}
+      <div className="grid gap-2 rounded-lg border border-line bg-mist p-4 text-sm text-ink">
+        <label className="flex items-start gap-3">
+          <input
+            id="firstShootOffer"
+            name="firstShootOffer"
+            type="checkbox"
+            {...errorProps("firstShootOffer", fields.firstShootOffer)}
+            className="mt-1 h-4 w-4 accent-clay"
+          />
+          <span>
+            <span className="font-semibold">This is my first shoot with FM Media.</span>
+            <span className="mt-1 block text-ink/70">
+              New clients: tick to claim free drone photos with your photo package.
+            </span>
           </span>
-        </span>
-      </label>
-      <fieldset className="grid gap-3 rounded-lg border border-line p-4">
-        <legend className="px-1 text-sm font-semibold text-ink">Video Services</legend>
-        <div className="grid gap-2 sm:grid-cols-3">
-          {videoServices.map((item) => (
-            <label key={item} className="flex items-center gap-2 text-sm font-medium text-ink/80">
-              <input name="videoService" type="checkbox" value={item} className="h-4 w-4 accent-clay" />
-              {item}
-            </label>
-          ))}
-        </div>
-        <FieldError message={state.fields?.videoService} />
-      </fieldset>
+        </label>
+        <FieldError id="firstShootOffer-error" message={fields.firstShootOffer} />
+      </div>
+      {options.videoServices.length ? (
+        <fieldset className="grid gap-3 rounded-lg border border-line p-4">
+          <legend className="px-1 text-sm font-semibold text-ink">Video Services</legend>
+          <div className="grid gap-2 sm:grid-cols-3">
+            {options.videoServices.map((item, index) => (
+              <label key={item.value} className="flex items-center gap-2 text-sm font-medium text-ink/80">
+                <input
+                  name="videoService"
+                  type="checkbox"
+                  value={item.value}
+                  {...(index === 0 ? errorProps("videoService", fields.videoService) : {})}
+                  className="h-4 w-4 accent-clay"
+                />
+                {item.label}
+              </label>
+            ))}
+          </div>
+          <FieldError id="videoService-error" message={fields.videoService} />
+        </fieldset>
+      ) : null}
       <label className="grid gap-2 text-sm font-medium text-ink">
         Message or Special Instructions
-        <textarea name="message" required rows={5} className="rounded-md border border-line px-3 py-2" />
-        <FieldError message={state.fields?.message} />
+        <textarea
+          id="message"
+          name="message"
+          required
+          rows={5}
+          maxLength={BOOKING_LIMITS.message}
+          {...errorProps("message", fields.message)}
+          className="rounded-md border border-line px-3 py-2"
+        />
+        <FieldError id="message-error" message={fields.message} />
       </label>
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <SubmitButton />
-        {state.message ? (
-          <p className={`text-sm font-medium ${state.ok ? "text-moss" : "text-clay"}`} role="status">
-            {state.message}
-          </p>
-        ) : null}
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+        <button
+          type="submit"
+          disabled={isPending}
+          aria-disabled={isPending}
+          className="focus-ring rounded-full bg-ink px-6 py-3 text-sm font-semibold text-white transition hover:bg-clay disabled:cursor-not-allowed disabled:opacity-60"
+        >
+          {isPending ? "Sending..." : "Request Availability"}
+        </button>
+        <div ref={statusRef} tabIndex={-1} role="status" className="grid gap-1 outline-none">
+          {state.message ? (
+            <>
+              <p className={`text-sm font-medium ${statusTone}`}>{state.message}</p>
+              <CallOrText />
+            </>
+          ) : null}
+        </div>
       </div>
     </form>
   );

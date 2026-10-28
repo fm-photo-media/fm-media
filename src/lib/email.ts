@@ -1,4 +1,5 @@
 import type { Inquiry } from "@prisma/client";
+import { formatStoredDate } from "@/lib/booking-time";
 
 function requiredEmailEnv() {
   const apiKey = process.env.EMAIL_API_KEY;
@@ -16,14 +17,8 @@ function line(label: string, value?: string | null) {
   return `${label}: ${value || "Not provided"}`;
 }
 
-export async function sendBookingNotification(inquiry: Inquiry) {
-  const { apiKey, from, to } = requiredEmailEnv();
-
-  if (!apiKey || !from || !to) {
-    return { skipped: true };
-  }
-
-  const body = [
+export function bookingEmailText(inquiry: Inquiry) {
+  return [
     "New Photography Booking Request",
     "",
     line("Customer name", inquiry.name),
@@ -31,17 +26,31 @@ export async function sendBookingNotification(inquiry: Inquiry) {
     line("Customer phone", inquiry.phone),
     line("Realtor / agency", inquiry.agencyName),
     line("Property address", inquiry.propertyAddress),
-    line("Property size", inquiry.propertySize),
+    line("Approx. square footage", inquiry.propertySize),
     line("Photo package", inquiry.photoPackage || "No photo package selected"),
     line("Selected add-ons", inquiry.addOns || "None"),
     line("Video services", inquiry.videoService || "None"),
-    line("Preferred shoot date", inquiry.preferredDate.toLocaleDateString()),
-    line("Preferred shoot time", inquiry.preferredTime),
+    line("Preferred shoot date", formatStoredDate(inquiry.preferredDate)),
+    line("Preferred time window", inquiry.preferredWindow),
+    line("Exact start time", inquiry.preferredTime),
     line("Free first-shoot drone photos", inquiry.firstShootOffer ? "Yes - eligible" : "No"),
     "",
     "Message / special instructions:",
     inquiry.message
   ].join("\n");
+}
+
+/**
+ * Sends the owner's notification. Throws on any failure (missing config in
+ * production, network error, timeout or a non-2xx from Resend) so the caller can
+ * flag the inquiry (QA-4). `skipped` means no email config outside production.
+ */
+export async function sendBookingNotification(inquiry: Inquiry) {
+  const { apiKey, from, to } = requiredEmailEnv();
+
+  if (!apiKey || !from || !to) {
+    return { skipped: true };
+  }
 
   const response = await fetch("https://api.resend.com/emails", {
     method: "POST",
@@ -52,13 +61,15 @@ export async function sendBookingNotification(inquiry: Inquiry) {
     body: JSON.stringify({
       from,
       to,
+      reply_to: inquiry.email,
       subject: "New Photography Booking Request",
-      text: body
-    })
+      text: bookingEmailText(inquiry)
+    }),
+    signal: AbortSignal.timeout(10_000)
   });
 
   if (!response.ok) {
-    throw new Error("Booking was saved, but the notification email could not be sent.");
+    throw new Error(`Resend responded ${response.status}.`);
   }
 
   return { skipped: false };

@@ -10,7 +10,11 @@ const LOCAL_HOSTS = new Set(["localhost", "127.0.0.1", "[::1]", "::1"]);
 export function isLocalDatabaseUrl(url: string | undefined): boolean {
   if (!url) return false;
   try {
-    const host = new URL(url).hostname.toLowerCase();
+    const parsed = new URL(url);
+    // SEC-15: libpq/Prisma let ?host= or ?hostaddr= override the host in the URL.
+    const overridesHost = Array.from(parsed.searchParams.keys()).some((name) => ["host", "hostaddr"].includes(name.toLowerCase()));
+    if (overridesHost) return false;
+    const host = parsed.hostname.toLowerCase();
     return LOCAL_HOSTS.has(host) || /^127\.\d{1,3}\.\d{1,3}\.\d{1,3}$/.test(host);
   } catch {
     return false;
@@ -30,7 +34,7 @@ export function assertSeedAllowed(env: Env): void {
   }
 }
 
-export type SeedDb<S extends { slug: string }, I extends { imageUrl: string }> = {
+export type SeedDb<S extends { slug: string }, I extends { imageUrl: string; published?: boolean }> = {
   service: {
     findUnique(args: { where: { slug: string } }): Promise<unknown | null>;
     create(args: { data: S }): Promise<unknown>;
@@ -41,7 +45,7 @@ export type SeedDb<S extends { slug: string }, I extends { imageUrl: string }> =
   };
 };
 
-export async function seedInsertOnly<S extends { slug: string }, I extends { imageUrl: string }>(
+export async function seedInsertOnly<S extends { slug: string }, I extends { imageUrl: string; published?: boolean }>(
   db: SeedDb<S, I>,
   services: S[],
   images: I[]
@@ -62,7 +66,8 @@ export async function seedInsertOnly<S extends { slug: string }, I extends { ima
       result.imagesSkipped++;
       continue;
     }
-    await db.galleryImage.create({ data: image });
+    // SEC-15: seeded images start hidden, so a re-seed can't re-publish photos the owner removed.
+    await db.galleryImage.create({ data: { ...image, published: image.published ?? false } });
     result.imagesCreated++;
   }
 

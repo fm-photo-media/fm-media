@@ -2,13 +2,19 @@ import type { Metadata } from "next";
 import { ContactForm } from "@/components/contact-form";
 import { PromoCallout } from "@/components/promo-callout";
 import { SectionHeading } from "@/components/section-heading";
+import { getBookingOptions } from "@/lib/booking-options";
+
+// QA-2: options and prices come from the published Service rows, like /pricing.
+export const revalidate = 3600;
 
 export const metadata: Metadata = {
   title: "Contact & Booking",
   description: "Book a real estate photography shoot for a listing, rental, Airbnb, or commercial property."
 };
 
-export default function ContactPage() {
+export default async function ContactPage() {
+  const options = await getBookingOptions();
+
   return (
     <main className="mx-auto grid max-w-7xl gap-8 px-4 py-10 sm:px-6 lg:grid-cols-[0.8fr_1.2fr] lg:px-8 lg:py-14">
       <div>
@@ -32,7 +38,7 @@ export default function ContactPage() {
           <PromoCallout />
         </div>
       </div>
-      <ContactForm />
+      <ContactForm options={options} />
     </main>
   );
 }

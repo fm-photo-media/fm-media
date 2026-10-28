@@ -56,10 +56,27 @@ model Inquiry {
   shootType       String
   preferredDate   DateTime
   preferredTime   String        @default("Flexible")
+  preferredWindow String        @default("Flexible")
   message         String
   status          String        @default("NEW")
+  // QA-4: PENDING until the notification is attempted, then SENT, FAILED or SKIPPED
+  // (no email config outside production). Rows from before batch 2 are UNKNOWN.
+  emailStatus     String        @default("PENDING")
+  emailError      String?
+  // SEC-4: one inquiry per form submission (double-submit protection).
+  submissionKey   String?       @unique
   createdAt       DateTime      @default(now())
   updatedAt       DateTime      @updatedAt
+}
+
+// SEC-4: sliding-window rate limit. key = "<scope>:<salted hash of client IP>".
+model RateLimitAttempt {
+  id        String   @id @default(cuid())
+  key       String
+  createdAt DateTime @default(now())
+
+  @@index([key, createdAt])
+  @@index([createdAt])
 }
 
 model AdminUser {

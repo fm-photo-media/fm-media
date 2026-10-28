@@ -173,10 +173,18 @@ export { blobStoreIdFromToken };
 // Files uploaded before batch 3: put(`gallery/${Date.now()}-${lower-cased file name}`)
 // with addRandomSuffix, e.g. gallery/1717800000000-front-porch-AbCdEf1234567890.jpg.
 const LEGACY_UPLOAD_PATHNAME = /^gallery\/\d{10,16}-[a-z0-9][a-z0-9.-]{0,150}-[A-Za-z0-9]{1,64}\.[a-z0-9]{2,5}$/;
+// An earlier client-upload build put the file name before the time, and the live site still
+// serves one such file: gallery/dsc08766-test-1781334120039-DKXN7AW4k8Y11QveO4RcqaikX4h1gW.jpg
+const LEGACY_NAME_FIRST_PATHNAME =
+  /^gallery\/[a-z0-9][a-z0-9.-]{0,150}-\d{10,16}-[A-Za-z0-9]{1,64}\.(jpg|jpeg|png|webp|avif|gif)$/;
 
 function isUploadPathname(pathname: string) {
   if (pathname.includes("..")) return false;
-  return CLIENT_UPLOAD_PATHNAME.test(pathname) || LEGACY_UPLOAD_PATHNAME.test(pathname);
+  return (
+    CLIENT_UPLOAD_PATHNAME.test(pathname) ||
+    LEGACY_UPLOAD_PATHNAME.test(pathname) ||
+    LEGACY_NAME_FIRST_PATHNAME.test(pathname)
+  );
 }
 
 /**

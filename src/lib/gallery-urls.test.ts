@@ -45,6 +45,24 @@ test("SEC-24: canonical Blob URLs round-trip; every variant spelling is refused"
   assert.equal(canonicalBlobUrl(`${host}/gallery/evil.html`, token), null, "not an upload name");
 });
 
+test("the name-first legacy upload still on the live site counts as our own, public upload", () => {
+  const nameFirst = `${host}/gallery/dsc08766-test-1781334120039-DKXN7AW4k8Y11QveO4RcqaikX4h1gW.jpg`;
+  assert.equal(canonicalBlobUrl(nameFirst, token), nameFirst);
+  assert.equal(isOwnBlobUrl(nameFirst, token), true);
+  assert.equal(isAllowedGalleryImageUrl(nameFirst, token), true);
+  assert.equal(isPublicGalleryImage(nameFirst, token), true);
+
+  for (const bad of [
+    `${host}/gallery/dsc08766-test-1781334120039-DKXN7AW4k8Y11QveO4RcqaikX4h1gW.html`,
+    `${host}/gallery/dsc08766-test-DKXN7AW4k8Y11QveO4RcqaikX4h1gW.jpg`,
+    `${host}/gallery/dsc..08766-1781334120039-DKXN7AW4k8Y11QveO4RcqaikX4h1gW.jpg`,
+    `${host}/gallery/dsc08766-test-1781334120039-DKXN7AW4k8Y11QveO4RcqaikX4h1gW.jpg?x=1`,
+    nameFirst.replace("abc123xyz", "someoneelse")
+  ]) {
+    assert.equal(canonicalBlobUrl(bad, token), null, bad);
+  }
+});
+
 test("SEC-24: isOwnBlobUrl (used before the row count and del()) is the canonical check", () => {
   assert.equal(isOwnBlobUrl(current, token), true);
   assert.equal(isOwnBlobUrl(legacy, token), true);

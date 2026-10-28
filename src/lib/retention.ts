@@ -1,6 +1,6 @@
 // SEC-13 / LEG-1 (legal.md LEG-6): how long booking inquiries are kept, and the admin
-// paging that makes every inquiry reachable. Deletion is manual from /admin; there is
-// deliberately no automatic cron.
+// paging that makes every inquiry reachable. Old inquiries are deleted automatically
+// (auto-purge.ts, Ship condition A1, no cron) and can also be purged by hand from /admin.
 
 export const DEFAULT_RETENTION_MONTHS = 24;
 export const MAX_RETENTION_MONTHS = 120;

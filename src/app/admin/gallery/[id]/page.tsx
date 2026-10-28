@@ -7,6 +7,7 @@ import { AdminNotice } from "@/app/admin/admin-fields";
 import { GalleryImageForm } from "@/app/admin/gallery/gallery-image-form";
 import { SectionHeading } from "@/components/section-heading";
 import { isAdminAuthenticated } from "@/lib/admin-auth";
+import { canRenderGalleryImage, galleryImageNotice } from "@/lib/gallery-visibility";
 import { prisma } from "@/lib/prisma";
 
 export const dynamic = "force-dynamic";
@@ -58,16 +59,21 @@ export default async function EditGalleryImagePage({
       <AdminNotice error={notice.error} success={notice.success} />
 
       <article className="mt-8 rounded-lg border border-line bg-white p-5">
-        <div className="mb-6 overflow-hidden rounded-lg border border-line bg-mist">
-          <Image
-            src={image.imageUrl}
-            alt={image.alt}
-            width={image.width}
-            height={image.height}
-            className="h-auto w-full object-cover"
-            sizes="(min-width: 1024px) 768px, 100vw"
-          />
-        </div>
+        {galleryImageNotice(image.imageUrl, process.env.BLOB_READ_WRITE_TOKEN) ? (
+          <p className="mb-4 rounded-md border border-line bg-mist px-4 py-3 text-sm leading-6 text-ink">{galleryImageNotice(image.imageUrl, process.env.BLOB_READ_WRITE_TOKEN)}</p>
+        ) : null}
+        {canRenderGalleryImage(image.imageUrl, process.env.BLOB_READ_WRITE_TOKEN) ? (
+          <div className="mb-6 overflow-hidden rounded-lg border border-line bg-mist">
+            <Image
+              src={image.imageUrl}
+              alt={image.alt}
+              width={image.width}
+              height={image.height}
+              className="h-auto w-full object-cover"
+              sizes="(min-width: 1024px) 768px, 100vw"
+            />
+          </div>
+        ) : null}
         {/* QA-6: the same form as "Add", so a replacement over ~1 MB goes browser -> Blob. */}
         <GalleryImageForm
           action={updateGalleryImage}

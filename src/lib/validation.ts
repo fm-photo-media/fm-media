@@ -2,6 +2,7 @@ import { z } from "zod";
 import { BOOKING_LIMITS } from "@/lib/booking-limits";
 import { TIME_WINDOWS, checkBookingSlot, isValidTimeInput, storedDateFromInput, windowForTime } from "@/lib/booking-time";
 import { singleLine } from "@/lib/text";
+import { isAllowedGalleryImageUrl } from "@/lib/upload";
 
 // QA-2: the booking form's options come from published Service rows.
 // `value` is the service slug the form posts; `label` ("Basic - $100") is what gets stored.
@@ -143,18 +144,16 @@ export const galleryImageSchema = z.object({
   title: z.string().trim().min(2).max(160),
   alt: z.string().trim().min(8).max(400),
   category: z.string().trim().min(2).max(60),
-  imageUrl: z.string().trim().max(2048).refine((value) => {
-    if (value.startsWith("/images/")) {
-      return true;
-    }
-
-    try {
-      const hostname = new URL(value).hostname;
-      return hostname === "images.unsplash.com" || hostname.endsWith(".public.blob.vercel-storage.com");
-    } catch {
-      return false;
-    }
-  }, "Use a local /images path, images.unsplash.com URL, or uploaded Vercel Blob image."),
+  // LEG-9: only our own Blob uploads or local /images files. Stock-photo and other
+  // outside links are refused, so they can't appear as portfolio work.
+  imageUrl: z
+    .string()
+    .trim()
+    .max(2048)
+    .refine(
+      (value) => isAllowedGalleryImageUrl(value, process.env.BLOB_READ_WRITE_TOKEN),
+      "Upload your own image file. Outside links, such as stock photos, can't be used."
+    ),
   width: z.coerce.number().int().min(320).default(1600),
   height: z.coerce.number().int().min(240).default(1100),
   featured: z.coerce.boolean().optional().default(false),

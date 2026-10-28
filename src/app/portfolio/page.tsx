@@ -1,13 +1,14 @@
 import type { Metadata } from "next";
 import { GalleryGrid } from "@/components/gallery-grid";
 import { SectionHeading } from "@/components/section-heading";
+import { BUSINESS } from "@/lib/business";
 import { getPublishedGalleryImages } from "@/lib/data";
 
 export const revalidate = 1800;
 
 export const metadata: Metadata = {
   title: "Portfolio",
-  description: "Real estate photography portfolio for homes, apartments, short-term rentals, and commercial spaces."
+  description: "Real estate photography portfolio: homes, apartments and short-term rentals in Chicagoland."
 };
 
 export default async function PortfolioPage() {
@@ -18,11 +19,25 @@ export default async function PortfolioPage() {
       <SectionHeading
         eyebrow="Portfolio"
         title="Property photography with clean light and strong composition."
-        copy="A selection of residential, short-term rental, twilight, and commercial work composed for listing pages and marketing campaigns."
+        copy="A selection of residential and short-term rental work, composed for listing pages and marketing."
         level="h1"
       />
       <div className="mt-10">
-        <GalleryGrid images={images} priorityFirst />
+        {/* Only Francisco's own uploads show (gallery-visibility.ts). */}
+        {images.length ? (
+          <GalleryGrid images={images} priorityFirst />
+        ) : (
+          <p className="max-w-2xl text-base leading-7 text-ink/70">
+            Our portfolio is being updated. Questions in the meantime? Call or{" "}
+            <a href={`sms:${BUSINESS.phoneE164}`} className="focus-ring font-semibold text-ink underline">
+              text
+            </a>{" "}
+            <a href={`tel:${BUSINESS.phoneE164}`} className="focus-ring font-semibold text-ink underline">
+              {BUSINESS.phoneDisplay}
+            </a>
+            .
+          </p>
+        )}
       </div>
     </main>
   );

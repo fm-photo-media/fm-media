@@ -9,7 +9,7 @@ export const revalidate = 3600;
 
 export const metadata: Metadata = {
   title: "Services",
-  description: "Real estate photography services for listings, rentals, twilight exteriors, and commercial properties."
+  description: "Real estate photo, video, drone and floor plan services for listings and rentals in Chicagoland."
 };
 
 export default async function ServicesPage() {
@@ -40,9 +40,9 @@ export default async function ServicesPage() {
         )}
       </div>
       <div className="mt-10 rounded-lg bg-ink p-8 text-white">
-        <h2 className="font-serif text-3xl">Need a custom commercial scope?</h2>
+        <h2 className="font-serif text-3xl">Need something not listed here?</h2>
         <p className="mt-3 max-w-2xl text-white/75">
-          Multi-site shoots, hospitality refreshes, leasing campaigns, and builder packages can be quoted by usage and schedule.
+          Tell us about the property and what you need, and we&apos;ll send you a quote.
         </p>
         <Link href="/contact" className="focus-ring mt-6 inline-flex rounded-full bg-white px-5 py-3 text-sm font-semibold text-ink">
           Request a Quote

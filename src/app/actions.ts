@@ -6,6 +6,7 @@ import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { clearAdminSession, requireAdmin, setAdminSession, verifyAdminPassword } from "@/lib/admin-auth";
 import { adminPath, withParams } from "@/lib/admin-path";
+import { runAutoPurge } from "@/lib/auto-purge-db";
 import { getBookingOptions } from "@/lib/booking-options";
 import { sendBookingNotification } from "@/lib/email";
 import { prisma } from "@/lib/prisma";
@@ -13,6 +14,7 @@ import { checkAdminLoginLimit, checkRateLimit, formatWait } from "@/lib/rate-lim
 import { monthsBefore, parseMonths } from "@/lib/retention";
 import {
   MAX_GALLERY_UPLOAD_BYTES,
+  canonicalBlobUrl,
   checkUploadedBlob,
   detectImageType,
   galleryUploadPathname,
@@ -92,30 +94,37 @@ function blobToken() {
   return process.env.BLOB_READ_WRITE_TOKEN;
 }
 
-/** SEC-8: delete a blob only if it is this project's own gallery file. Never throws. */
+/**
+ * SEC-8 / SEC-24: delete a blob only if it is this project's own gallery file, by its
+ * canonical URL (canonicalBlobUrl refuses any variant spelling). Never throws.
+ */
 async function deleteBlobQuietly(url: string | null | undefined) {
-  if (!url || !isOwnBlobUrl(url, blobToken())) return;
+  const canonical = url ? canonicalBlobUrl(url, blobToken()) : null;
+  if (!canonical) return;
   try {
-    await del(url);
+    await del(canonical);
   } catch (error) {
-    console.error(`[gallery] could not delete blob ${url}`, error);
+    console.error(`[gallery] could not delete blob ${canonical}`, error);
   }
 }
 
 /**
- * SEC-8 / SEC-21: only when no gallery row points at the same file, so a file another
- * row still shows is never deleted. If the count fails, nothing is deleted.
+ * SEC-8 / SEC-21 / SEC-24: only when no gallery row points at the same file, so a file
+ * another row still shows is never deleted. The row count and del() both use the
+ * canonical URL; anything that doesn't round-trip to it is refused. If the count fails,
+ * nothing is deleted.
  */
 async function deleteBlobIfUnused(url: string | null | undefined) {
-  if (!url || !isOwnBlobUrl(url, blobToken())) return;
+  const canonical = url ? canonicalBlobUrl(url, blobToken()) : null;
+  if (!canonical) return;
   let stillUsed: number;
   try {
-    stillUsed = await prisma.galleryImage.count({ where: { imageUrl: url } });
+    stillUsed = await prisma.galleryImage.count({ where: { imageUrl: canonical } });
   } catch (error) {
-    console.error(`[gallery] could not check whether blob ${url} is in use; keeping it`, error);
+    console.error(`[gallery] could not check whether blob ${canonical} is in use; keeping it`, error);
     return;
   }
-  if (stillUsed === 0) await deleteBlobQuietly(url);
+  if (stillUsed === 0) await deleteBlobQuietly(canonical);
 }
 
 /**
@@ -362,6 +371,11 @@ export async function createInquiry(_: FormState, formData: FormData): Promise<F
   await prisma.inquiry
     .update({ where: { id: inquiry.id }, data: { emailStatus, emailError } })
     .catch((error) => console.error(`[booking] could not record email status for inquiry ${inquiry.id}`, error));
+
+  // LEG-1 / Ship condition A1: delete inquiries past the retention period. Throttled to
+  // about once an hour, best effort, never throws (auto-purge.ts). It only ever deletes
+  // rows older than the retention period, so it can't touch the booking just saved.
+  await runAutoPurge();
 
   return bookingResult(emailStatus);
 }

@@ -7,6 +7,7 @@ import { deleteInquiry, logoutAdmin, logoutAllAdminSessions, purgeOldInquiries, 
 import { AdminNotice } from "@/app/admin/admin-fields";
 import { SectionHeading } from "@/components/section-heading";
 import { isAdminAuthenticated } from "@/lib/admin-auth";
+import { lastAutoPurgeAt, runAutoPurge } from "@/lib/auto-purge-db";
 import { BOOKING_TIME_ZONE, formatStoredDate } from "@/lib/booking-time";
 import { prisma } from "@/lib/prisma";
 import {
@@ -81,14 +82,19 @@ export default async function AdminPage({ searchParams }: { searchParams: Promis
   const retentionMonths = retentionMonthsFrom(process.env);
   const retentionCutoff = monthsBefore(new Date(), retentionMonths);
 
-  const [serviceCount, galleryCount, inquiryCount, followUpCount, filteredCount, overRetentionCount, honeypot] = await Promise.all([
+  // LEG-1 / Ship condition A1: delete inquiries past the retention period first, so the
+  // counts below are current. At most about once an hour; never throws (auto-purge.ts).
+  await runAutoPurge();
+
+  const [serviceCount, galleryCount, inquiryCount, followUpCount, filteredCount, overRetentionCount, honeypot, lastPurge] = await Promise.all([
     prisma.service.count(),
     prisma.galleryImage.count(),
     prisma.inquiry.count(),
     prisma.inquiry.count({ where: { emailStatus: { in: [...EMAIL_ISSUE_STATUSES] } } }),
     prisma.inquiry.count({ where }),
     prisma.inquiry.count({ where: { createdAt: { lt: retentionCutoff } } }),
-    prisma.siteCounter.findUnique({ where: { key: "honeypot" }, select: { count: true } })
+    prisma.siteCounter.findUnique({ where: { key: "honeypot" }, select: { count: true } }),
+    lastAutoPurgeAt()
   ]);
 
   const { page, pageCount, skip, take } = inquiryPage(query.page, filteredCount);
@@ -296,7 +302,9 @@ export default async function AdminPage({ searchParams }: { searchParams: Promis
           {overRetentionCount === 0
             ? "None are older than that."
             : `${overRetentionCount} ${overRetentionCount === 1 ? "was" : "were"} received more than ${retentionMonths} months ago.`}{" "}
-          Nothing is deleted automatically. Copies in your email inbox have to be deleted there.
+          Older ones are deleted automatically: the site checks at most once an hour, when a booking comes in or when this
+          page loads{lastPurge ? ` (last check ${receivedFormat.format(lastPurge)}, Chicago time)` : ""}. You can also delete them
+          right away below. Copies in your email inbox aren&apos;t touched and have to be deleted there.
         </p>
         <form action={purgeOldInquiries} className="mt-4 flex flex-wrap items-end gap-4">
           <label className="grid gap-1 text-sm font-medium text-ink">

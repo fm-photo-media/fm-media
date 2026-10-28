@@ -1,3 +1,9 @@
+import { imageHostForBuild } from "./src/lib/blob-host.mjs";
+
+// SEC-25: images and the CSP img-src are pinned to our own public Blob store, from
+// BLOB_READ_WRITE_TOKEN at build time. Without the token: the old wildcard, plus a warning.
+const blobImageHost = imageHostForBuild(process.env.BLOB_READ_WRITE_TOKEN);
+
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   experimental: {
@@ -19,7 +25,7 @@ const nextConfig = {
           {
             key: "Content-Security-Policy",
             value:
-              "default-src 'self'; base-uri 'self'; frame-ancestors 'none'; form-action 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https://images.unsplash.com https://*.public.blob.vercel-storage.com; font-src 'self' data:; connect-src 'self' https://api.resend.com https://*.blob.vercel-storage.com https://vercel.com/api/blob/"
+              `default-src 'self'; base-uri 'self'; frame-ancestors 'none'; form-action 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https://${blobImageHost}; font-src 'self' data:; connect-src 'self' https://api.resend.com https://*.blob.vercel-storage.com https://vercel.com/api/blob/`
           },
           {
             key: "X-Frame-Options",
@@ -42,14 +48,13 @@ const nextConfig = {
     ];
   },
   images: {
+    // LEG-9 / SEC-25: only our own Blob store's gallery uploads (plus local /public files,
+    // which need no pattern). No stock-photo hosts, so outside images can never be shown.
     remotePatterns: [
       {
         protocol: "https",
-        hostname: "images.unsplash.com"
-      },
-      {
-        protocol: "https",
-        hostname: "*.public.blob.vercel-storage.com"
+        hostname: blobImageHost,
+        pathname: "/gallery/**"
       }
     ],
     formats: ["image/avif", "image/webp"]

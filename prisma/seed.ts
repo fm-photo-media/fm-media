@@ -4,13 +4,7 @@ import { assertSeedAllowed, seedInsertOnly } from "./seed-lib";
 const prisma = new PrismaClient();
 
 const images = [
-  {
-    title: "Front Exterior",
-    alt: "Front exterior real estate photo of a two-story home with porch",
-    category: "Exterior",
-    imageUrl: "/images/portfolio/real-estate-photo-01.jpg",
-    featured: true
-  },
+  // QA-25 / 4.21: the old hero exterior (legible house number) is deleted from the repo, row and file.
   {
     title: "Back Patio",
     alt: "Back patio and yard real estate photo with mature trees",
@@ -102,7 +96,7 @@ const services = [
     description: "Professionally edited listing photos for condos, apartments, and smaller homes where speed and clarity matter.",
     startingAt: 100,
     deliverable: "10-15 professionally edited photos",
-    turnaround: "Fast delivery",
+    turnaround: "Confirmed when you book",
     featured: true
   },
   {
@@ -110,13 +104,13 @@ const services = [
     slug: "standard-photo-package",
     category: "PHOTO",
     priceLabel: "$135",
-    bestUse: "Most popular",
+    bestUse: "Best for most single-family homes",
     squareFeet: "Up to 2,500 sq ft",
     summary: "Balanced coverage for the majority of single-family listings.",
     description: "Interior and exterior coverage edited for accurate color, straight verticals, and polished listing presentation.",
     startingAt: 135,
     deliverable: "20-25 professionally edited photos",
-    turnaround: "Fast delivery",
+    turnaround: "Confirmed when you book",
     featured: true,
     sortOrder: 1
   },
@@ -131,7 +125,7 @@ const services = [
     description: "A fuller listing gallery with more room coverage, exterior angles, and details that help buyers understand the property.",
     startingAt: 200,
     deliverable: "30-40 professionally edited photos",
-    turnaround: "Fast delivery",
+    turnaround: "Confirmed when you book",
     featured: true,
     sortOrder: 2
   },
@@ -143,7 +137,7 @@ const services = [
     bestUse: "Best for estates",
     squareFeet: "4,000+ sq ft",
     summary: "Custom coverage for large homes, estates, and listings with broader marketing needs.",
-    description: "A larger image set planned around property size, features, acreage, and final marketing scope.",
+    description: "A larger image set planned around property size, features, lot size, and final marketing scope.",
     startingAt: 250,
     deliverable: "40-60 professionally edited photos",
     turnaround: "Custom timeline",
@@ -199,7 +193,7 @@ const services = [
     description: "A straightforward property walkthrough that helps buyers understand room flow and overall layout.",
     startingAt: 150,
     deliverable: "1-2 minute property walkthrough video",
-    turnaround: "Fast delivery",
+    turnaround: "Confirmed when you book",
     sortOrder: 20
   },
   {
@@ -225,7 +219,7 @@ const services = [
     description: "A concise video introducing the agent, team, or brand for social media and listing promotions.",
     startingAt: 125,
     deliverable: "Short agent or brand introduction video",
-    turnaround: "Fast delivery",
+    turnaround: "Confirmed when you book",
     sortOrder: 22
   },
   {

@@ -48,14 +48,14 @@ test("SEC-11: upload names are generated, never taken from the user's filename",
 test("SEC-8: only this project's own gallery blobs are ever deleted", () => {
   const token = "vercel_blob_rw_AbC123xyz_secretpart";
   assert.equal(blobStoreIdFromToken(token), "abc123xyz");
-  assert.equal(isOwnBlobUrl("https://abc123xyz.public.blob.vercel-storage.com/gallery/1-aa.jpg", token), true);
-  assert.equal(isOwnBlobUrl("https://someoneelse.public.blob.vercel-storage.com/gallery/1-aa.jpg", token), false);
-  assert.equal(isOwnBlobUrl("https://abc123xyz.public.blob.vercel-storage.com/other/1-aa.jpg", token), false);
-  assert.equal(isOwnBlobUrl("http://abc123xyz.public.blob.vercel-storage.com/gallery/1-aa.jpg", token), false);
-  assert.equal(isOwnBlobUrl("/images/portfolio/real-estate-photo-01.jpg", token), false);
+  assert.equal(isOwnBlobUrl("https://abc123xyz.public.blob.vercel-storage.com/gallery/1799942400000-0123456789ab.jpg", token), true);
+  assert.equal(isOwnBlobUrl("https://someoneelse.public.blob.vercel-storage.com/gallery/1799942400000-0123456789ab.jpg", token), false);
+  assert.equal(isOwnBlobUrl("https://abc123xyz.public.blob.vercel-storage.com/other/1799942400000-0123456789ab.jpg", token), false);
+  assert.equal(isOwnBlobUrl("http://abc123xyz.public.blob.vercel-storage.com/gallery/1799942400000-0123456789ab.jpg", token), false);
+  assert.equal(isOwnBlobUrl("/images/portfolio/real-estate-photo-02.jpg", token), false);
   assert.equal(isOwnBlobUrl("https://images.unsplash.com/photo-1", token), false);
   assert.equal(isOwnBlobUrl("not a url", token), false);
-  assert.equal(isOwnBlobUrl("https://abc123xyz.public.blob.vercel-storage.com/gallery/1-aa.jpg", undefined), false);
+  assert.equal(isOwnBlobUrl("https://abc123xyz.public.blob.vercel-storage.com/gallery/1799942400000-0123456789ab.jpg", undefined), false);
 });
 
 test("QA-6: files over the server-action size go browser -> Blob, on create and on replace", () => {

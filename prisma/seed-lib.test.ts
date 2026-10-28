@@ -63,7 +63,7 @@ test("seed never deletes or overwrites existing rows, and only inserts missing o
   const adminEditedService = { slug: "basic", title: "Basic (edited by admin)" };
   const adminOnlyService = { slug: "admin-made", title: "Added in /admin" };
   const adminUpload = { imageUrl: "https://x.public.blob.vercel-storage.com/a.jpg", title: "Upload" };
-  const existingSeedImage = { imageUrl: "/images/portfolio/real-estate-photo-01.jpg", title: "Renamed" };
+  const existingSeedImage = { imageUrl: "/images/portfolio/real-estate-photo-03.jpg", title: "Renamed" };
   const { db, calls, services, images } = fakeDb(
     [adminEditedService, adminOnlyService],
     [adminUpload, existingSeedImage]
@@ -76,7 +76,7 @@ test("seed never deletes or overwrites existing rows, and only inserts missing o
       { slug: "floor-plans", title: "Floor Plans" }
     ],
     [
-      { imageUrl: "/images/portfolio/real-estate-photo-01.jpg", title: "Front Exterior" },
+      { imageUrl: "/images/portfolio/real-estate-photo-03.jpg", title: "Rear Exterior" },
       { imageUrl: "/images/portfolio/real-estate-photo-02.jpg", title: "Back Patio" }
     ]
   );

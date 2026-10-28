@@ -1,9 +1,9 @@
-import Image from "next/image";
 import Link from "next/link";
 import { GalleryGrid } from "@/components/gallery-grid";
 import { PricingCard } from "@/components/pricing-card";
 import { PromoCallout } from "@/components/promo-callout";
 import { SectionHeading } from "@/components/section-heading";
+import { BUSINESS } from "@/lib/business";
 import { getFeaturedGalleryImages, getPublishedServices } from "@/lib/data";
 
 export const revalidate = 3600;
@@ -16,14 +16,16 @@ export default async function HomePage() {
   return (
     <main>
       <section className="bg-white">
-        <div className="mx-auto grid max-w-7xl gap-8 px-4 py-10 sm:px-6 lg:grid-cols-[0.95fr_1.05fr] lg:px-8 lg:py-16">
+        {/* 4.21: the hero photo (a legible house number, not confirmed as Francisco's work) is
+            gone. The hero stays text-only until he supplies his own exterior; batch 5 redoes it. */}
+        <div className="mx-auto max-w-7xl px-4 py-10 sm:px-6 lg:px-8 lg:py-16">
           <div className="flex flex-col justify-center">
             <p className="text-sm font-semibold uppercase tracking-[0.18em] text-clay">Real estate photography</p>
             <h1 className="mt-4 max-w-3xl font-serif text-4xl leading-tight text-ink sm:text-5xl lg:text-6xl">
-              Listing media that helps properties move faster.
+              Real estate photos and video for Chicagoland listings.
             </h1>
             <p className="mt-5 max-w-xl text-base leading-7 text-ink/70 sm:text-lg sm:leading-8">
-              Fast, professional real estate photos, drone media, walkthrough videos, cinematic edits, and floor plan add-ons for agents, property managers, Airbnb hosts, and homeowners.
+              Real estate photos, drone media, walkthrough videos, cinematic edits and floor plan add-ons for agents, property managers, Airbnb hosts and homeowners.
             </p>
             <div className="mt-5 max-w-xl">
               <PromoCallout />
@@ -39,16 +41,16 @@ export default async function HomePage() {
                 Request a Custom Bundle
               </Link>
             </div>
-          </div>
-          <div className="relative min-h-[280px] overflow-hidden rounded-lg shadow-soft sm:min-h-[380px] lg:min-h-[420px]">
-            <Image
-              src="/images/portfolio/real-estate-photo-01.jpg"
-              alt="Front exterior real estate photo of a two-story home with porch"
-              fill
-              priority
-              sizes="(min-width: 1024px) 52vw, 100vw"
-              className="object-cover"
-            />
+            <p className="mt-5 text-sm text-ink/70">
+              {BUSINESS.name}, owned by {BUSINESS.owner}. Call or{" "}
+              <a href={`sms:${BUSINESS.phoneE164}`} className="focus-ring font-semibold text-ink underline">
+                text
+              </a>{" "}
+              <a href={`tel:${BUSINESS.phoneE164}`} className="focus-ring font-semibold text-ink underline">
+                {BUSINESS.phoneDisplay}
+              </a>
+              .
+            </p>
           </div>
         </div>
       </section>
@@ -60,7 +62,7 @@ export default async function HomePage() {
             ["Drone", "aerial photos and short drone video for stronger listing context"],
             ["Bundle", "discounted rates for repeat listings and ongoing realtor work"]
           ].map(([stat, label]) => (
-            <div key={stat} className="border-t border-line pt-5">
+            <div key={stat} className="pt-5">
               <p className="font-serif text-4xl text-clay">{stat}</p>
               <p className="mt-2 text-sm leading-6 text-ink/70">{label}</p>
             </div>
@@ -83,6 +85,8 @@ export default async function HomePage() {
         </div>
       </section>
 
+      {/* Only Francisco's own uploads show (gallery-visibility.ts); the row stays hidden until there are some. */}
+      {images.length ? (
       <section className="mx-auto max-w-7xl px-4 py-16 sm:px-6 lg:px-8">
         <div className="flex flex-col gap-6 sm:flex-row sm:items-end sm:justify-between">
           <SectionHeading eyebrow="Portfolio" title="Bright, composed, listing-ready." />
@@ -94,6 +98,7 @@ export default async function HomePage() {
           <GalleryGrid images={images} />
         </div>
       </section>
+      ) : null}
     </main>
   );
 }

@@ -7,6 +7,7 @@ import { AdminNotice } from "@/app/admin/admin-fields";
 import { GalleryImageForm } from "@/app/admin/gallery/gallery-image-form";
 import { SectionHeading } from "@/components/section-heading";
 import { isAdminAuthenticated } from "@/lib/admin-auth";
+import { canRenderGalleryImage, galleryImageNotice } from "@/lib/gallery-visibility";
 import { prisma } from "@/lib/prisma";
 
 export const dynamic = "force-dynamic";
@@ -41,7 +42,7 @@ export default async function AdminGalleryPage({ searchParams }: { searchParams:
       <Link href="/admin" className="focus-ring text-sm font-semibold text-clay hover:text-ink">
         Back to Admin
       </Link>
-      <SectionHeading level="h1" eyebrow="Admin" title="Manage gallery images." copy="Upload listing photos, update labels, and choose featured portfolio images." />
+      <SectionHeading level="h1" eyebrow="Admin" title="Manage gallery images." copy="Upload photos from your own shoots, update labels, and choose featured portfolio images. Only your own uploads show on the public site." />
       <AdminNotice error={notice.error} success={notice.success} />
 
       <section className="mt-10 rounded-lg border border-line bg-white p-5">
@@ -70,20 +71,30 @@ export default async function AdminGalleryPage({ searchParams }: { searchParams:
                 <tr key={image.id}>
                   <td className="px-4 py-3">
                     {/* Research (admin): a thumbnail, so the owner can check what is published. */}
-                    <Image
-                      src={image.imageUrl}
-                      alt={image.alt}
-                      width={96}
-                      height={64}
-                      sizes="96px"
-                      className="h-16 w-24 rounded border border-line bg-mist object-cover"
-                    />
+                    {/* LEG-9: outside links are never loaded; a plain box stands in. */}
+                    {canRenderGalleryImage(image.imageUrl, process.env.BLOB_READ_WRITE_TOKEN) ? (
+                      <Image
+                        src={image.imageUrl}
+                        alt={image.alt}
+                        width={96}
+                        height={64}
+                        sizes="96px"
+                        className="h-16 w-24 rounded border border-line bg-mist object-cover"
+                      />
+                    ) : (
+                      <span className="flex h-16 w-24 items-center justify-center rounded border border-line bg-mist text-xs text-ink/70">
+                        Not shown
+                      </span>
+                    )}
                   </td>
                   <td className="px-4 py-3 font-medium text-ink">{image.title}</td>
                   <td className="px-4 py-3 text-ink/70">{image.category}</td>
                   <td className="px-4 py-3 text-ink/70">
                     {image.published ? "Published" : "Hidden"}
                     {image.featured ? " / Featured" : ""}
+                    {galleryImageNotice(image.imageUrl, process.env.BLOB_READ_WRITE_TOKEN) ? (
+                      <span className="mt-1 block max-w-xs text-xs leading-5 text-ink/70">{galleryImageNotice(image.imageUrl, process.env.BLOB_READ_WRITE_TOKEN)}</span>
+                    ) : null}
                   </td>
                   <td className="px-4 py-3">
                     <Link href={`/admin/gallery/${image.id}`} className="focus-ring text-sm font-semibold text-clay hover:text-ink">

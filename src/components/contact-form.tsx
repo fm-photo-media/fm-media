@@ -2,8 +2,10 @@
 
 import { useEffect, useMemo, useRef, useState, useTransition, type FormEvent } from "react";
 import { useFormState } from "react-dom";
+import Link from "next/link";
 import { createInquiry, type FormState } from "@/app/actions";
 import { BOOKING_LIMITS } from "@/lib/booking-limits";
+import { BUSINESS } from "@/lib/business";
 import {
   MIN_LEAD_MINUTES,
   TIME_WINDOWS,
@@ -16,8 +18,8 @@ import type { BookingOptions } from "@/lib/validation";
 
 const initialState: FormState = { status: "idle", ok: false, message: "" };
 const weekdays = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
-const PHONE_DISPLAY = "(312) 375-5209";
-const PHONE_E164 = "+13123755209";
+const PHONE_DISPLAY = BUSINESS.phoneDisplay;
+const PHONE_E164 = BUSINESS.phoneE164;
 
 function formatDateValue(date: Date) {
   const year = date.getFullYear();
@@ -544,9 +546,23 @@ export function ContactForm({ options }: { options: BookingOptions }) {
         />
         <FieldError id="message-error" message={fields.message} />
       </label>
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+      <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-start sm:justify-between">
+        {/* LEG-1 (batch4-copy section 1): the notice sits directly above the submit button. */}
+        <p id="booking-notice" className="w-full text-sm leading-6 text-ink/70">
+          Sending this form is a request, not a confirmed booking. We use your details only to handle your request, never for
+          marketing. See our{" "}
+          <Link href="/privacy" className="focus-ring font-semibold text-ink underline">
+            Privacy Policy
+          </Link>{" "}
+          and{" "}
+          <Link href="/terms" className="focus-ring font-semibold text-ink underline">
+            Terms
+          </Link>
+          .
+        </p>
         <button
           type="submit"
+          aria-describedby="booking-notice"
           disabled={isPending}
           aria-disabled={isPending}
           className="focus-ring rounded-full bg-ink px-6 py-3 text-sm font-semibold text-white transition hover:bg-clay disabled:cursor-not-allowed disabled:opacity-60"

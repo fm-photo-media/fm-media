@@ -10,10 +10,10 @@ export const metadata: Metadata = {
     template: "%s | FM Media"
   },
   description:
-    "Premium real estate photography for homes, apartments, short-term rentals, and commercial spaces.",
+    "Real estate photography and video for homes, apartments and short-term rentals across Chicagoland.",
   openGraph: {
     title: "FM Media",
-    description: "Fast, polished photography services for property marketing.",
+    description: "Real estate photography and video in Chicagoland.",
     type: "website"
   }
 };

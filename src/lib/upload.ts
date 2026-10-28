@@ -1,6 +1,8 @@
 // Gallery upload rules, shared by the server action, the client-upload token route and
 // the admin form (so: no Node-only imports). Pure functions, tested in upload.test.ts.
 
+import { blobStoreIdFromToken } from "./blob-host.mjs";
+
 export const ALLOWED_IMAGE_TYPES = ["image/jpeg", "image/png", "image/webp", "image/avif"] as const;
 export type AllowedImageType = (typeof ALLOWED_IMAGE_TYPES)[number];
 
@@ -51,29 +53,67 @@ export function galleryUploadPathname(type: AllowedImageType, now = new Date()) 
   return `gallery/${now.getTime()}-${randomHex(6)}.${EXTENSIONS[type]}`;
 }
 
-/** The Blob store id from a read-write token ("vercel_blob_rw_<storeId>_<secret>"). */
-export function blobStoreIdFromToken(token: string | undefined) {
-  const storeId = token?.split("_")[3];
-  return storeId ? storeId.toLowerCase() : null;
+// The Blob store id from a read-write token ("vercel_blob_rw_<storeId>_<secret>"). Shared
+// with next.config.mjs (SEC-25), so the image config and these checks agree on one host.
+export { blobStoreIdFromToken };
+
+// Files uploaded before batch 3: put(`gallery/${Date.now()}-${lower-cased file name}`)
+// with addRandomSuffix, e.g. gallery/1717800000000-front-porch-AbCdEf1234567890.jpg.
+const LEGACY_UPLOAD_PATHNAME = /^gallery\/\d{10,16}-[a-z0-9][a-z0-9.-]{0,150}-[A-Za-z0-9]{1,64}\.[a-z0-9]{2,5}$/;
+
+function isUploadPathname(pathname: string) {
+  if (pathname.includes("..")) return false;
+  return CLIENT_UPLOAD_PATHNAME.test(pathname) || LEGACY_UPLOAD_PATHNAME.test(pathname);
 }
 
 /**
- * SEC-8: true only for an https URL in THIS project's public Blob store, under gallery/.
- * Seed images (/images/...), Unsplash and other stores are never deleted.
+ * SEC-24: the one canonical spelling of a file in THIS project's public Blob store:
+ * `https://<storeId>.public.blob.vercel-storage.com/gallery/<upload name>`, with no query,
+ * fragment, credentials, port, upper-case host or percent-encoding. Returns that string,
+ * or null if `url` isn't exactly it (anything that doesn't round-trip is refused), so a
+ * variant spelling of an in-use file can never pass the "unused" row count before del().
+ */
+export function canonicalBlobUrl(url: string, token: string | undefined) {
+  const storeId = blobStoreIdFromToken(token);
+  if (!storeId || typeof url !== "string") return null;
+  let parsed: URL;
+  try {
+    parsed = new URL(url);
+  } catch {
+    return null;
+  }
+  const host = `${storeId}.public.blob.vercel-storage.com`;
+  if (parsed.protocol !== "https:" || parsed.hostname !== host) return null;
+  if (parsed.username || parsed.password || parsed.port || parsed.search || parsed.hash) return null;
+  const pathname = parsed.pathname.slice(1);
+  if (!isUploadPathname(pathname)) return null;
+  const canonical = `https://${host}/${pathname}`;
+  return canonical === url ? canonical : null;
+}
+
+/**
+ * SEC-8 / SEC-24: true only for the canonical URL of a gallery upload in THIS project's
+ * public Blob store. Seed images (/images/...), outside links and other stores are never
+ * deleted.
  */
 export function isOwnBlobUrl(url: string, token: string | undefined) {
-  const storeId = blobStoreIdFromToken(token);
-  if (!storeId) return false;
-  try {
-    const parsed = new URL(url);
-    return (
-      parsed.protocol === "https:" &&
-      parsed.hostname === `${storeId}.public.blob.vercel-storage.com` &&
-      parsed.pathname.startsWith("/gallery/")
-    );
-  } catch {
-    return false;
-  }
+  return canonicalBlobUrl(url, token) !== null;
+}
+
+// Local files in public/images/: plain lower-case path segments and an image extension.
+const LOCAL_IMAGE_PATH = /^\/images\/(?:[a-z0-9][a-z0-9_-]*\/)*[a-z0-9][a-z0-9_.-]*\.(?:jpe?g|png|webp|avif)$/;
+
+export function isLocalImagePath(url: string) {
+  return typeof url === "string" && LOCAL_IMAGE_PATH.test(url) && !url.includes("..");
+}
+
+/**
+ * LEG-9: a gallery image is either our own Blob upload or a local /images file. Stock
+ * photo sites (Unsplash and the like) and any other outside link are refused, so stock
+ * photos can't appear as portfolio work.
+ */
+export function isAllowedGalleryImageUrl(url: string, token: string | undefined) {
+  return isLocalImagePath(url) || isOwnBlobUrl(url, token);
 }
 
 // ---------------------------------------------------------------------------

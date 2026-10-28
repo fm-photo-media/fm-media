@@ -102,7 +102,7 @@ export async function createInquiry(_: FormState, formData: FormData): Promise<F
     ...Object.fromEntries(formData),
     addOns: formData.getAll("addOns").map(String).join(", "),
     videoService: formData.getAll("videoService").map(String).join(", ") || "None",
-    firstShootOffer: checkboxValue(formData, "firstShootOffer")
+    firstShootOffer: formData.get("firstShootOffer")
   });
 
   if (!parsed.success) {

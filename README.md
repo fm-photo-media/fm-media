@@ -28,7 +28,7 @@ npm run prisma:seed
 npm run dev
 ```
 
-Set `DATABASE_URL` in `.env` before running migrations. For local development, use a hosted Postgres database such as Neon, Supabase, Prisma Postgres, or Vercel Postgres.
+Set `DATABASE_URL` in `.env` before running migrations. Use a local Postgres (on `localhost`) for development, never the production database. The seed step only runs against a local `DATABASE_URL` and only inserts rows that are missing; `npm test` checks those rules.
 
 Open `http://localhost:3000`.
 
@@ -41,7 +41,7 @@ The default development password is `change-me`; set `ADMIN_PASSWORD` and `ADMIN
 - Set `ADMIN_PASSWORD`, `ADMIN_SESSION_SECRET`, `NEXT_PUBLIC_SITE_URL`, `EMAIL_FROM`, `EMAIL_TO`, `EMAIL_API_KEY`, and `BLOB_READ_WRITE_TOKEN` in Vercel.
 - Replace the simple password gate with a full auth provider if multiple admins need accounts or audit history.
 - Run production migrations with `npm run prisma:deploy`.
-- Seed packages and gallery records with `npm run prisma:seed`.
+- **Never seed production.** `npm run prisma:seed` is for an empty local database only. It is insert-only (it never deletes or overwrites rows) and refuses to run when `NODE_ENV=production` or when `DATABASE_URL` is not a local host (`localhost`, `127.0.0.1`, `::1`). Manage live services and gallery images in `/admin`.
 
 Email notifications use the Resend HTTP API. `EMAIL_API_KEY` should be a Resend API key, `EMAIL_FROM` should be a verified sender, and `EMAIL_TO` should be the business owner's booking inbox.
 Gallery file uploads use Vercel Blob. Connect a Blob store to the Vercel project so `BLOB_READ_WRITE_TOKEN` is available before using admin uploads.

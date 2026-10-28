@@ -1,7 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { PricingCard } from "@/components/pricing-card";
-import { PromoCallout } from "@/components/promo-callout";
 import { SectionHeading } from "@/components/section-heading";
 import { getPublishedServices } from "@/lib/data";
 import { groupServices } from "@/lib/services";
@@ -25,9 +24,6 @@ export default async function ServicesPage() {
         copy="Photo packages, drone media, floor plans, and video options built to help listings look clear, professional, and ready to market."
         level="h1"
       />
-      <div className="mt-8">
-        <PromoCallout />
-      </div>
       <div className="mt-10 grid gap-10">
         {groups.slice(0, 3).map((group) =>
           group.services.length ? (

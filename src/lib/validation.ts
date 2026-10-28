@@ -25,7 +25,8 @@ export const inquirySchema = z
     photoPackage: z.string().trim().optional().default("No photo package selected"),
     addOns: z.string().trim().optional().default(""),
     videoService: z.string().trim().optional().default("None"),
-    firstShootOffer: z.coerce.boolean().optional().default(false),
+    // Only a ticked checkbox ("on") or JSON `true` claims the offer (QA-1, LEG-4, SEC-13).
+    firstShootOffer: z.preprocess((value) => value === true || value === "on", z.boolean()),
     shootType: z.string().trim().optional().default("Listing Media Package"),
     preferredDate: z
       .string()

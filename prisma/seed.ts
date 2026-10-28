@@ -1,4 +1,5 @@
 import { PrismaClient } from "@prisma/client";
+import { assertSeedAllowed, seedInsertOnly } from "./seed-lib";
 
 const prisma = new PrismaClient();
 
@@ -243,46 +244,37 @@ const services = [
 ];
 
 async function main() {
-  await prisma.service.deleteMany({
-    where: {
-      slug: {
-        notIn: services.map((service) => service.slug)
+  // SEC-5: refuse production and non-local databases before any query runs.
+  assertSeedAllowed(process.env);
+
+  // Insert-only: rows that already exist (edited or added in /admin) are never
+  // updated or deleted.
+  const result = await seedInsertOnly(
+    {
+      service: {
+        findUnique: (args) => prisma.service.findUnique(args),
+        create: (args) => prisma.service.create(args)
+      },
+      galleryImage: {
+        findFirst: (args) => prisma.galleryImage.findFirst(args),
+        create: (args) => prisma.galleryImage.create(args)
       }
-    }
-  });
+    },
+    services,
+    images
+  );
 
-  for (const service of services) {
-    await prisma.service.upsert({
-      where: { slug: service.slug },
-      update: service,
-      create: service
-    });
-  }
-
-  await prisma.galleryImage.deleteMany({
-    where: {
-      imageUrl: {
-        notIn: images.map((item) => item.imageUrl)
-      }
-    }
-  });
-
-  for (const image of images) {
-    const existing = await prisma.galleryImage.findFirst({ where: { imageUrl: image.imageUrl } });
-    if (!existing) {
-      await prisma.galleryImage.create({ data: image });
-    } else {
-      await prisma.galleryImage.update({ where: { id: existing.id }, data: image });
-    }
-  }
+  console.log(
+    `Seed done (insert-only): ${result.servicesCreated} services added, ${result.servicesSkipped} already present; ` +
+      `${result.imagesCreated} images added, ${result.imagesSkipped} already present.`
+  );
 }
 
 main()
+  .catch((error) => {
+    console.error(error instanceof Error ? error.message : error);
+    process.exitCode = 1;
+  })
   .finally(async () => {
     await prisma.$disconnect();
-  })
-  .catch(async (error) => {
-    console.error(error);
-    await prisma.$disconnect();
-    process.exit(1);
   });

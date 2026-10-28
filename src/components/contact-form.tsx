@@ -291,11 +291,11 @@ export function ContactForm() {
         <FieldError message={state.fields?.addOns} />
       </fieldset>
       <label className="flex items-start gap-3 rounded-lg border border-line bg-mist p-4 text-sm text-ink">
-        <input name="firstShootOffer" type="checkbox" value="true" defaultChecked className="mt-1 h-4 w-4 accent-clay" />
+        <input name="firstShootOffer" type="checkbox" className="mt-1 h-4 w-4 accent-clay" />
         <span>
           <span className="font-semibold">This is my first shoot with FM Media.</span>
           <span className="mt-1 block text-ink/70">
-            First-time realtor clients get drone photos included free.
+            New clients: tick to claim free drone photos with your photo package.
           </span>
         </span>
       </label>

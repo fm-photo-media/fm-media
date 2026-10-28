@@ -29,7 +29,7 @@ export default function ContactPage() {
           </div>
         </dl>
         <div className="mt-8">
-          <PromoCallout compact />
+          <PromoCallout />
         </div>
       </div>
       <ContactForm />

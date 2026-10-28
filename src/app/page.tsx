@@ -26,7 +26,7 @@ export default async function HomePage() {
               Fast, professional real estate photos, drone media, walkthrough videos, cinematic edits, and floor plan add-ons for agents, property managers, Airbnb hosts, and homeowners.
             </p>
             <div className="mt-5 max-w-xl">
-              <PromoCallout compact />
+              <PromoCallout />
             </div>
             <div className="mt-8 flex flex-wrap gap-3">
               <Link href="/contact" className="focus-ring w-full rounded-full bg-ink px-6 py-3 text-center text-sm font-semibold text-white hover:bg-clay sm:w-auto">
@@ -75,9 +75,6 @@ export default async function HomePage() {
             title="Photos, video, drone, and floor plans in one booking flow."
             copy="Start with the right photo package, then add the listing media that helps buyers understand the property before they arrive."
           />
-          <div className="mt-6">
-            <PromoCallout compact />
-          </div>
           <div className="mt-8 grid gap-5 md:grid-cols-2 xl:grid-cols-4">
             {homepageServices.map((service) => (
               <PricingCard key={service.id} service={service} />

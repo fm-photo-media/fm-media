@@ -1,5 +1,6 @@
 import type { Inquiry } from "@prisma/client";
 import { formatStoredDate } from "@/lib/booking-time";
+import { singleLine } from "@/lib/text";
 
 function requiredEmailEnv() {
   const apiKey = process.env.EMAIL_API_KEY;
@@ -14,7 +15,8 @@ function requiredEmailEnv() {
 }
 
 function line(label: string, value?: string | null) {
-  return `${label}: ${value || "Not provided"}`;
+  // SEC-18: belt and braces. Validation already strips these, but old rows may not be clean.
+  return `${label}: ${singleLine(value ?? "") || "Not provided"}`;
 }
 
 export function bookingEmailText(inquiry: Inquiry) {

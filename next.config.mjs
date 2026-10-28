@@ -2,11 +2,10 @@
 const nextConfig = {
   experimental: {
     serverActions: {
-      // SEC-4: was 10mb for every action, public ones included. 4.5mb is Vercel's own
-      // request cap and still fits the admin path that posts images <= 4 MB through a
-      // server action (larger ones go browser -> Blob). Lower it to ~1mb in batch 3 once
-      // image replacement uses the client upload path too (QA-6).
-      bodySizeLimit: "4.5mb"
+      // SEC-4 / QA-6 (batch 3): 1mb for every action, public ones included. Admin image
+      // files over 900 KB (SERVER_UPLOAD_BYTES in src/lib/upload.ts) go browser -> Blob
+      // through /api/gallery-upload, on both "add" and "replace", so nothing needs more.
+      bodySizeLimit: "1mb"
     }
   },
   async headers() {
@@ -14,10 +13,13 @@ const nextConfig = {
       {
         source: "/:path*",
         headers: [
+          // QA-21: `upload()` from @vercel/blob/client (2.4.0) PUTs the file to
+          // https://vercel.com/api/blob/ (and /api/blob/mpu for multipart). connect-src
+          // allows only that path prefix, not the whole vercel.com origin.
           {
             key: "Content-Security-Policy",
             value:
-              "default-src 'self'; base-uri 'self'; frame-ancestors 'none'; form-action 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https://images.unsplash.com https://*.public.blob.vercel-storage.com; font-src 'self' data:; connect-src 'self' https://api.resend.com https://*.blob.vercel-storage.com"
+              "default-src 'self'; base-uri 'self'; frame-ancestors 'none'; form-action 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https://images.unsplash.com https://*.public.blob.vercel-storage.com; font-src 'self' data:; connect-src 'self' https://api.resend.com https://*.blob.vercel-storage.com https://vercel.com/api/blob/"
           },
           {
             key: "X-Frame-Options",

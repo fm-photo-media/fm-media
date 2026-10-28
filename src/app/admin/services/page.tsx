@@ -14,11 +14,12 @@ export const metadata: Metadata = {
   robots: { index: false, follow: false }
 };
 
-export default async function AdminServicesPage({ searchParams }: { searchParams?: { error?: string; success?: string } }) {
+export default async function AdminServicesPage({ searchParams }: { searchParams: Promise<{ error?: string; success?: string }> }) {
   if (!(await isAdminAuthenticated())) {
     redirect("/admin/login");
   }
 
+  const notice = await searchParams;
   const services = await prisma.service.findMany({ orderBy: [{ sortOrder: "asc" }, { updatedAt: "desc" }] });
 
   return (
@@ -26,10 +27,10 @@ export default async function AdminServicesPage({ searchParams }: { searchParams
       <Link href="/admin" className="focus-ring text-sm font-semibold text-clay hover:text-ink">
         Back to Admin
       </Link>
-      <SectionHeading eyebrow="Admin" title="Manage services and packages." copy="Add, edit, publish, feature, or delete pricing packages." />
-      <AdminNotice error={searchParams?.error} success={searchParams?.success} />
+      <SectionHeading level="h1" eyebrow="Admin" title="Manage services and packages." copy="Add, edit, publish, feature, or delete pricing packages." />
+      <AdminNotice error={notice.error} success={notice.success} />
 
-      <section className="mt-10 rounded-lg border border-line bg-white p-5 shadow-sm">
+      <section className="mt-10 rounded-lg border border-line bg-white p-5">
         <h2 className="font-serif text-2xl">Add Service</h2>
         <form action={createService} className="mt-5 grid gap-4">
           <TextInput name="title" label="Title" />
@@ -65,7 +66,7 @@ export default async function AdminServicesPage({ searchParams }: { searchParams
         <h2 className="font-serif text-3xl">Services</h2>
         <div className="mt-5 grid gap-5">
           {services.map((service) => (
-            <article key={service.id} className="rounded-lg border border-line bg-white p-5 shadow-sm">
+            <article key={service.id} className="rounded-lg border border-line bg-white p-5">
               <form action={updateService} className="grid gap-4">
                 <input type="hidden" name="id" value={service.id} />
                 <div className="grid gap-4 lg:grid-cols-2">

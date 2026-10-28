@@ -1,6 +1,10 @@
-.env
-.env.local
+# SEC-14: every env file stays out of git (the repo is public), except the example.
+.env*
+!.env.example
+.vercel
 .next
 node_modules
 prisma/dev.db
 *.log
+# design-taste-frontend skill output
+.taste-skill/

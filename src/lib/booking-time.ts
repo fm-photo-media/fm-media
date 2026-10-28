@@ -16,6 +16,26 @@ const WINDOW_END: Record<TimeWindow, string> = {
   Flexible: "23:59"
 };
 
+// QA-20: what each window means when the customer also types an exact start time
+// ([start, end), Chicago wall clock). An exact time outside the chosen window turns the
+// window into Flexible, so the owner never sees "Morning at 16:00".
+const WINDOW_RANGE: Record<Exclude<TimeWindow, "Flexible">, [string, string]> = {
+  Morning: ["00:00", "12:00"],
+  Midday: ["12:00", "14:00"],
+  Afternoon: ["14:00", "17:00"]
+};
+
+export function timeFitsWindow(time: string, window: TimeWindow) {
+  if (window === "Flexible") return true;
+  const [start, end] = WINDOW_RANGE[window];
+  return time >= start && time < end;
+}
+
+/** The window to store: Flexible when an exact time falls outside the chosen one. */
+export function windowForTime(time: string, window: TimeWindow): TimeWindow {
+  return time && isValidTimeInput(time) && !timeFitsWindow(time, window) ? "Flexible" : window;
+}
+
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 const TIME_RE = /^([01]\d|2[0-3]):[0-5]\d$/;
 

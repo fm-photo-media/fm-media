@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Image from "next/image";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { createGalleryImage, deleteGalleryImage } from "@/app/actions";
@@ -15,21 +16,24 @@ export const metadata: Metadata = {
   robots: { index: false, follow: false }
 };
 
-export default async function AdminGalleryPage({ searchParams }: { searchParams?: { error?: string; success?: string } }) {
+export default async function AdminGalleryPage({ searchParams }: { searchParams: Promise<{ error?: string; success?: string }> }) {
   if (!(await isAdminAuthenticated())) {
     redirect("/admin/login");
   }
 
+  const notice = await searchParams;
   const images = await prisma.galleryImage.findMany({
     orderBy: { updatedAt: "desc" },
     take: 50,
-      select: {
-        id: true,
-        title: true,
-        category: true,
-        featured: true,
-        published: true
-      }
+    select: {
+      id: true,
+      title: true,
+      alt: true,
+      category: true,
+      imageUrl: true,
+      featured: true,
+      published: true
+    }
   });
 
   return (
@@ -37,20 +41,23 @@ export default async function AdminGalleryPage({ searchParams }: { searchParams?
       <Link href="/admin" className="focus-ring text-sm font-semibold text-clay hover:text-ink">
         Back to Admin
       </Link>
-      <SectionHeading eyebrow="Admin" title="Manage gallery images." copy="Upload listing photos, update labels, and choose featured portfolio images." />
-      <AdminNotice error={searchParams?.error} success={searchParams?.success} />
+      <SectionHeading level="h1" eyebrow="Admin" title="Manage gallery images." copy="Upload listing photos, update labels, and choose featured portfolio images." />
+      <AdminNotice error={notice.error} success={notice.success} />
 
-      <section className="mt-10 rounded-lg border border-line bg-white p-5 shadow-sm">
+      <section className="mt-10 rounded-lg border border-line bg-white p-5">
         <h2 className="font-serif text-2xl">Add Gallery Image</h2>
         <GalleryImageForm action={createGalleryImage} fileLabel="Choose Image File" submitLabel="Add Image" requireFile />
       </section>
 
       <section className="mt-12">
         <h2 className="font-serif text-3xl">Gallery Images</h2>
-        <div className="mt-5 overflow-x-auto rounded-lg border border-line bg-white shadow-sm">
-          <table className="w-full min-w-[680px] text-left text-sm">
+        <div className="mt-5 overflow-x-auto rounded-lg border border-line bg-white">
+          <table className="w-full min-w-[780px] text-left text-sm">
             <thead className="bg-mist text-ink">
               <tr>
+                <th className="px-4 py-3">
+                  <span className="sr-only">Preview</span>
+                </th>
                 <th className="px-4 py-3">Title</th>
                 <th className="px-4 py-3">Category</th>
                 <th className="px-4 py-3">Status</th>
@@ -58,9 +65,20 @@ export default async function AdminGalleryPage({ searchParams }: { searchParams?
                 <th className="px-4 py-3">Delete</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-line">
+            <tbody className="divide-y divide-line">{/* taste-skill-ignore: rows of a real data table */}
               {images.map((image) => (
                 <tr key={image.id}>
+                  <td className="px-4 py-3">
+                    {/* Research (admin): a thumbnail, so the owner can check what is published. */}
+                    <Image
+                      src={image.imageUrl}
+                      alt={image.alt}
+                      width={96}
+                      height={64}
+                      sizes="96px"
+                      className="h-16 w-24 rounded border border-line bg-mist object-cover"
+                    />
+                  </td>
                   <td className="px-4 py-3 font-medium text-ink">{image.title}</td>
                   <td className="px-4 py-3 text-ink/70">{image.category}</td>
                   <td className="px-4 py-3 text-ink/70">
@@ -75,6 +93,7 @@ export default async function AdminGalleryPage({ searchParams }: { searchParams?
                   <td className="px-4 py-3">
                     <form action={deleteGalleryImage} className="flex items-center gap-3">
                       <input type="hidden" name="id" value={image.id} />
+                      <input type="hidden" name="returnTo" value="/admin/gallery" />
                       <label className="flex items-center gap-2 text-xs font-medium text-ink/70">
                         <input name="confirmDelete" type="checkbox" required className="h-4 w-4 accent-clay" />
                         Confirm
@@ -86,7 +105,7 @@ export default async function AdminGalleryPage({ searchParams }: { searchParams?
               ))}
               {images.length === 0 ? (
                 <tr>
-                  <td className="px-4 py-6 text-ink/60" colSpan={5}>
+                  <td className="px-4 py-6 text-ink/60" colSpan={6}>
                     No gallery images yet.
                   </td>
                 </tr>

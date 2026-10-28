@@ -32,12 +32,13 @@ Set `DATABASE_URL` in `.env` before running migrations. Use a local Postgres (on
 Open `http://localhost:3000`.
 
 The local admin login is at `http://localhost:3000/admin/login`.
-The default development password is `change-me`; set `ADMIN_PASSWORD` and `ADMIN_SESSION_SECRET` before deploying.
+The default development password is `change-me`. Production refuses weak or placeholder secrets: `ADMIN_PASSWORD` needs 16+ characters, and `ADMIN_SESSION_SECRET` and `RATE_LIMIT_SALT` each need 32+ random characters (see `.env.example`). Admin sessions last 12 hours and are stored in the `AdminSession` table; signing out revokes them.
 
 ## Production Notes
 
 - Set `DATABASE_URL` in Vercel to a hosted PostgreSQL connection string.
-- Set `ADMIN_PASSWORD`, `ADMIN_SESSION_SECRET`, `NEXT_PUBLIC_SITE_URL`, `EMAIL_FROM`, `EMAIL_TO`, `EMAIL_API_KEY`, and `BLOB_READ_WRITE_TOKEN` in Vercel.
+- Set `ADMIN_PASSWORD`, `ADMIN_SESSION_SECRET`, `RATE_LIMIT_SALT`, `NEXT_PUBLIC_SITE_URL`, `EMAIL_FROM`, `EMAIL_TO`, `EMAIL_API_KEY`, and `BLOB_READ_WRITE_TOKEN` in Vercel. `INQUIRY_RETENTION_MONTHS` is optional (default 24).
+- Run `npm run prisma:deploy` against production **before** deploying new code that adds a migration.
 - Replace the simple password gate with a full auth provider if multiple admins need accounts or audit history.
 - Run production migrations with `npm run prisma:deploy`.
 - **Never seed production.** `npm run prisma:seed` is for an empty local database only. It is insert-only (it never deletes or overwrites rows) and refuses to run when `NODE_ENV=production` or when `DATABASE_URL` is not a local host (`localhost`, `127.0.0.1`, `::1`). Manage live services and gallery images in `/admin`.

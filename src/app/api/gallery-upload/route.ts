@@ -1,30 +1,36 @@
 import { handleUpload, type HandleUploadBody } from "@vercel/blob/client";
 import { NextResponse } from "next/server";
 import { isAdminAuthenticated } from "@/lib/admin-auth";
+import { ALLOWED_IMAGE_TYPES, CLIENT_UPLOAD_PATHNAME, MAX_GALLERY_UPLOAD_BYTES } from "@/lib/upload";
 
-const MAX_GALLERY_UPLOAD_BYTES = 10 * 1024 * 1024;
-const ALLOWED_IMAGE_TYPES = ["image/jpeg", "image/png", "image/webp", "image/avif"];
-
+// Token exchange for browser -> Blob uploads (files over SERVER_UPLOAD_BYTES, QA-6).
+// Admin session required (checked against the AdminSession table on every call).
 export async function POST(request: Request) {
   if (!(await isAdminAuthenticated())) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const body = (await request.json()) as HandleUploadBody;
+  let body: HandleUploadBody;
+  try {
+    body = (await request.json()) as HandleUploadBody;
+  } catch {
+    return NextResponse.json({ error: "Upload failed." }, { status: 400 });
+  }
 
   try {
     const response = await handleUpload({
       body,
       request,
       onBeforeGenerateToken: async (pathname) => {
-        if (!pathname.startsWith("gallery/")) {
+        // SEC-11: only names the admin form generates (gallery/<time>-<random>.<ext>).
+        if (!CLIENT_UPLOAD_PATHNAME.test(pathname)) {
           throw new Error("Invalid upload destination.");
         }
 
         return {
-          allowedContentTypes: ALLOWED_IMAGE_TYPES,
+          allowedContentTypes: [...ALLOWED_IMAGE_TYPES],
           maximumSizeInBytes: MAX_GALLERY_UPLOAD_BYTES,
-          addRandomSuffix: true,
+          addRandomSuffix: false,
           cacheControlMaxAge: 60 * 60 * 24 * 365
         };
       }
@@ -32,9 +38,7 @@ export async function POST(request: Request) {
 
     return NextResponse.json(response);
   } catch (error) {
-    return NextResponse.json(
-      { error: error instanceof Error ? error.message : "Upload failed." },
-      { status: 400 }
-    );
+    console.error("[gallery] client upload token refused", error);
+    return NextResponse.json({ error: "Upload failed." }, { status: 400 });
   }
 }

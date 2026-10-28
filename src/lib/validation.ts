@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { BOOKING_LIMITS } from "@/lib/booking-limits";
-import { TIME_WINDOWS, checkBookingSlot, isValidTimeInput, storedDateFromInput } from "@/lib/booking-time";
+import { TIME_WINDOWS, checkBookingSlot, isValidTimeInput, storedDateFromInput, windowForTime } from "@/lib/booking-time";
+import { singleLine } from "@/lib/text";
 
 // QA-2: the booking form's options come from published Service rows.
 // `value` is the service slug the form posts; `label` ("Basic - $100") is what gets stored.
@@ -17,6 +18,10 @@ export const STALE_OPTION = "That option is no longer offered. Please choose aga
 export { BOOKING_LIMITS };
 
 const text = (max: number, tooLong = `Keep this under ${max} characters.`) => z.string().trim().max(max, tooLong);
+// SEC-18: single-line fields lose line breaks and control characters (collapsed to a
+// space), so they can't fake extra lines in the owner's plain-text email.
+const line = (max: number, tooLong?: string) =>
+  z.preprocess((value) => (typeof value === "string" ? singleLine(value) : value), text(max, tooLong));
 
 // Multi-select values arrive comma-joined (slugs never contain commas). This keeps
 // collections out of zod 3 (see SEC-9) and caps how many values are looked at.
@@ -39,15 +44,15 @@ export function makeInquirySchema({ options, now = () => new Date() }: { options
 
   return z
     .object({
-      name: text(BOOKING_LIMITS.name).pipe(z.string().min(2, "Enter your name.")),
-      email: text(BOOKING_LIMITS.email).pipe(z.string().email("Enter a valid email.")),
-      phone: text(BOOKING_LIMITS.phone, "Enter a phone number under 30 characters.").refine(
+      name: line(BOOKING_LIMITS.name).pipe(z.string().min(2, "Enter your name.")),
+      email: line(BOOKING_LIMITS.email).pipe(z.string().email("Enter a valid email.")),
+      phone: line(BOOKING_LIMITS.phone, "Enter a phone number under 30 characters.").refine(
         (value) => value.replace(/\D/g, "").length >= 10,
         "Enter a complete phone number."
       ),
-      agencyName: text(BOOKING_LIMITS.agencyName).optional(),
-      propertyAddress: text(BOOKING_LIMITS.propertyAddress).pipe(z.string().min(6, "Enter the property address.")),
-      squareFeet: text(BOOKING_LIMITS.squareFeet)
+      agencyName: line(BOOKING_LIMITS.agencyName).optional(),
+      propertyAddress: line(BOOKING_LIMITS.propertyAddress).pipe(z.string().min(6, "Enter the property address.")),
+      squareFeet: line(BOOKING_LIMITS.squareFeet)
         .optional()
         .default("")
         .refine((value) => {
@@ -105,7 +110,8 @@ export function makeInquirySchema({ options, now = () => new Date() }: { options
           .map((slug) => lookup(options.videoServices, slug))
           .join(", ") || "None",
       preferredDate: storedDateFromInput(value.preferredDate),
-      preferredTime: value.preferredTime || "Flexible"
+      preferredTime: value.preferredTime || "Flexible",
+      preferredWindow: windowForTime(value.preferredTime, value.preferredWindow)
     }));
 }
 

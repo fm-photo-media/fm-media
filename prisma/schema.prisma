@@ -8,17 +8,17 @@ datasource db {
 }
 
 model GalleryImage {
-  id          String   @id @default(cuid())
-  title       String
-  alt         String
-  category    String
-  imageUrl    String
-  width       Int      @default(1600)
-  height      Int      @default(1100)
-  featured    Boolean  @default(false)
-  published   Boolean  @default(true)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  id        String   @id @default(cuid())
+  title     String
+  alt       String
+  category  String
+  imageUrl  String
+  width     Int      @default(1600)
+  height    Int      @default(1100)
+  featured  Boolean  @default(false)
+  published Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
 model Service {
@@ -42,31 +42,35 @@ model Service {
 }
 
 model Inquiry {
-  id              String        @id @default(cuid())
+  id              String   @id @default(cuid())
   name            String
   email           String
   phone           String
   agencyName      String?
   propertyAddress String
-  propertySize    String        @default("Not provided")
-  photoPackage    String        @default("Not selected")
-  addOns          String        @default("")
-  videoService    String        @default("None")
-  firstShootOffer Boolean       @default(false)
+  propertySize    String   @default("Not provided")
+  photoPackage    String   @default("Not selected")
+  addOns          String   @default("")
+  videoService    String   @default("None")
+  firstShootOffer Boolean  @default(false)
   shootType       String
   preferredDate   DateTime
-  preferredTime   String        @default("Flexible")
-  preferredWindow String        @default("Flexible")
+  preferredTime   String   @default("Flexible")
+  preferredWindow String   @default("Flexible")
   message         String
-  status          String        @default("NEW")
+  status          String   @default("NEW")
   // QA-4: PENDING until the notification is attempted, then SENT, FAILED or SKIPPED
-  // (no email config outside production). Rows from before batch 2 are UNKNOWN.
-  emailStatus     String        @default("PENDING")
+  // (no email config outside production), or SKIPPED_CAP (SEC-17: over the daily email
+  // cap, so no email was sent). Rows from before batch 2 are UNKNOWN.
+  emailStatus     String   @default("PENDING")
   emailError      String?
   // SEC-4: one inquiry per form submission (double-submit protection).
-  submissionKey   String?       @unique
-  createdAt       DateTime      @default(now())
-  updatedAt       DateTime      @updatedAt
+  submissionKey   String?  @unique
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  // Batch 3: the admin list is sorted newest first, filtered by status, and purged by age.
+  @@index([createdAt])
 }
 
 // SEC-4: sliding-window rate limit. key = "<scope>:<salted hash of client IP>".
@@ -86,4 +90,21 @@ model AdminUser {
   name         String?
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
+}
+
+// SEC-2 (batch 3): one row per admin sign-in. `id` is an HMAC of the random cookie
+// token (never the token itself). Logout deletes the row; expired rows are refused.
+model AdminSession {
+  id        String   @id
+  createdAt DateTime @default(now())
+  expiresAt DateTime
+
+  @@index([expiresAt])
+}
+
+// SEC-19 (batch 3): simple named counters, e.g. "honeypot" hits on the booking form.
+model SiteCounter {
+  key       String   @id
+  count     Int      @default(0)
+  updatedAt DateTime @updatedAt
 }

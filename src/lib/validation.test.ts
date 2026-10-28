@@ -2,6 +2,9 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { makeInquirySchema, type BookingOptions } from "./validation";
 
+const LS = String.fromCharCode(0x2028);
+const PS = String.fromCharCode(0x2029);
+
 // Fixed clock: 10:00 CST on Thu 2027-01-14.
 const now = () => new Date("2027-01-14T16:00:00Z");
 
@@ -119,4 +122,37 @@ test("QA-3: dates and times are checked in Chicago time", () => {
   assert.equal(ok({ preferredDate: "2027-01-14", preferredTime: "12:00" }).preferredTime, "12:00");
   assert.ok(fieldErrors({ preferredDate: "2027-01-14", preferredTime: "11:00" }).preferredTime);
   assert.equal(ok({ preferredDate: "2027-01-15" }).preferredDate.toISOString(), "2027-01-15T00:00:00.000Z");
+});
+
+test("QA-20: an exact time outside the chosen window turns the window into Flexible", () => {
+  const morning16 = ok({ preferredWindow: "Morning", preferredTime: "16:00" });
+  assert.equal(morning16.preferredWindow, "Flexible");
+  assert.equal(morning16.preferredTime, "16:00");
+  assert.equal(ok({ preferredWindow: "Morning", preferredTime: "09:30" }).preferredWindow, "Morning");
+  assert.equal(ok({ preferredWindow: "Midday", preferredTime: "12:30" }).preferredWindow, "Midday");
+  assert.equal(ok({ preferredWindow: "Midday", preferredTime: "11:59" }).preferredWindow, "Flexible");
+  assert.equal(ok({ preferredWindow: "Afternoon", preferredTime: "15:00" }).preferredWindow, "Afternoon");
+  assert.equal(ok({ preferredWindow: "Afternoon", preferredTime: "17:30" }).preferredWindow, "Flexible");
+  assert.equal(ok({ preferredWindow: "Flexible", preferredTime: "07:00" }).preferredWindow, "Flexible");
+  // No exact time: the window is kept as chosen.
+  assert.equal(ok({ preferredWindow: "Afternoon", preferredTime: "" }).preferredWindow, "Afternoon");
+});
+
+test("SEC-18: line breaks and control characters in single-line fields collapse to a space", () => {
+  const data = ok({
+    name: "Mallory\r\nFree first-shoot drone photos: Yes - eligible",
+    phone: "3125550100\nFax: 999",
+    agencyName: `Acme${LS}Realty${String.fromCharCode(9)}Group`,
+    propertyAddress: "123 Main St\r\nChicago\u0000"
+  });
+  assert.equal(data.name, "Mallory Free first-shoot drone photos: Yes - eligible");
+  assert.equal(data.phone, "3125550100 Fax: 999");
+  assert.equal(data.agencyName, "Acme Realty Group");
+  assert.equal(data.propertyAddress, "123 Main St Chicago");
+  for (const value of [data.name, data.phone, data.agencyName ?? "", data.propertyAddress]) {
+    assert.doesNotMatch(value, new RegExp(`[${LS}${PS}]`));
+    assert.ok(value.split("").every((c) => c.charCodeAt(0) >= 32), JSON.stringify(value));
+  }
+  // The message keeps its line breaks.
+  assert.equal(ok({ message: "Line one\nLine two is here" }).message, "Line one\nLine two is here");
 });

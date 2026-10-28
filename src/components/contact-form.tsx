@@ -4,7 +4,14 @@ import { useEffect, useMemo, useRef, useState, useTransition, type FormEvent } f
 import { useFormState } from "react-dom";
 import { createInquiry, type FormState } from "@/app/actions";
 import { BOOKING_LIMITS } from "@/lib/booking-limits";
-import { MIN_LEAD_MINUTES, TIME_WINDOWS, chicagoToday, chicagoWallClock } from "@/lib/booking-time";
+import {
+  MIN_LEAD_MINUTES,
+  TIME_WINDOWS,
+  chicagoToday,
+  chicagoWallClock,
+  timeFitsWindow,
+  type TimeWindow
+} from "@/lib/booking-time";
 import type { BookingOptions } from "@/lib/validation";
 
 const initialState: FormState = { status: "idle", ok: false, message: "" };
@@ -219,6 +226,9 @@ export function ContactForm({ options }: { options: BookingOptions }) {
   const [resetSignal, setResetSignal] = useState(0);
   const [selectedDate, setSelectedDate] = useState("");
   const [selectedTime, setSelectedTime] = useState("");
+  // QA-19: the window is controlled, so its error sits on the radio the customer chose.
+  const [selectedWindow, setSelectedWindow] = useState<TimeWindow>("Flexible");
+  const [windowNote, setWindowNote] = useState("");
   const cutoff = bookingCutoff();
   const minTime = selectedDate && selectedDate === cutoff.date ? cutoff.time : undefined;
   const fields = state.fields ?? {};
@@ -236,6 +246,8 @@ export function ContactForm({ options }: { options: BookingOptions }) {
       formRef.current?.reset();
       setSelectedDate("");
       setSelectedTime("");
+      setSelectedWindow("Flexible");
+      setWindowNote("");
       setResetSignal((value) => value + 1);
     }
 
@@ -276,11 +288,12 @@ export function ContactForm({ options }: { options: BookingOptions }) {
       onSubmit={handleSubmit}
       className="relative grid min-w-0 gap-4 rounded-lg border border-line bg-white p-4 shadow-soft sm:p-6"
     >
-      {/* SEC-4 honeypot: hidden from people and assistive tech; bots fill it. */}
+      {/* SEC-4 / SEC-19 honeypot: hidden from people and assistive tech; bots fill it.
+          A neutral name and label that autofill tools don't recognise. */}
       <div aria-hidden="true" className="sr-only">
         <label>
-          Website (leave this empty)
-          <input name="website" type="text" tabIndex={-1} autoComplete="off" defaultValue="" />
+          Reference note
+          <input name="ref_note" type="text" tabIndex={-1} autoComplete="off" defaultValue="" />
         </label>
       </div>
       <div className="grid gap-4 sm:grid-cols-2">
@@ -377,15 +390,19 @@ export function ContactForm({ options }: { options: BookingOptions }) {
       <fieldset className="grid gap-3 rounded-lg border border-line p-4">
         <legend className="px-1 text-sm font-semibold text-ink">Preferred time window (optional)</legend>
         <div className="flex flex-wrap gap-x-5 gap-y-2">
-          {TIME_WINDOWS.map((window, index) => (
+          {TIME_WINDOWS.map((window) => (
             <label key={window} className="flex items-center gap-2 text-sm font-medium text-ink/80">
               <input
-                id={index === 0 ? "preferredWindow" : undefined}
+                id={window === selectedWindow ? "preferredWindow" : undefined}
                 name="preferredWindow"
                 type="radio"
                 value={window}
-                defaultChecked={window === "Flexible"}
-                {...(index === 0 ? errorProps("preferredWindow", fields.preferredWindow) : {})}
+                checked={window === selectedWindow}
+                onChange={() => {
+                  setSelectedWindow(window);
+                  setWindowNote("");
+                }}
+                {...(window === selectedWindow ? errorProps("preferredWindow", fields.preferredWindow, "preferredWindow-note") : {})}
                 className="h-4 w-4 accent-clay"
               />
               {window}
@@ -393,6 +410,12 @@ export function ContactForm({ options }: { options: BookingOptions }) {
           ))}
         </div>
         <FieldError id="preferredWindow-error" message={fields.preferredWindow} />
+        {/* QA-20: an exact time outside the window makes the window Flexible (the server does the same). */}
+        <p id="preferredWindow-note" className="text-xs text-ink/60" aria-live="polite">
+          {selectedTime && !timeFitsWindow(selectedTime, selectedWindow)
+            ? `${selectedTime} is outside the ${selectedWindow} window, so it will be saved as Flexible.`
+            : windowNote}
+        </p>
         <label className="grid max-w-xs gap-2 text-sm font-medium text-ink">
           Exact start time (optional)
           <input
@@ -401,7 +424,16 @@ export function ContactForm({ options }: { options: BookingOptions }) {
             type="time"
             min={minTime}
             value={selectedTime}
-            onChange={(event) => setSelectedTime(event.target.value)}
+            onChange={(event) => {
+              const time = event.target.value;
+              setSelectedTime(time);
+              if (time && !timeFitsWindow(time, selectedWindow)) {
+                setSelectedWindow("Flexible");
+                setWindowNote(`Time window set to Flexible to match ${time}.`);
+              } else {
+                setWindowNote("");
+              }
+            }}
             {...errorProps("preferredTime", fields.preferredTime, minTime ? "preferredTime-hint" : undefined)}
             className="rounded-md border border-line px-3 py-2"
           />

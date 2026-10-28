@@ -14,6 +14,10 @@ const nextConfig = {
       bodySizeLimit: "1mb"
     }
   },
+  // Batch 5 (DES-9): Services and Pricing are one page now. `permanent: true` sends a 308.
+  async redirects() {
+    return [{ source: "/pricing", destination: "/services", permanent: true }];
+  },
   async headers() {
     return [
       {

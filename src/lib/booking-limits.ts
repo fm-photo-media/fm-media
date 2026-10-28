@@ -10,3 +10,6 @@ export const BOOKING_LIMITS = {
   squareFeet: 20,
   message: 4000
 } as const;
+
+/** DES-26: the booking form's "No photos, other services only" option value (no package). */
+export const NO_PACKAGE_VALUE = "none";

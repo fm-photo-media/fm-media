@@ -5,11 +5,12 @@ import type { ReactNode } from "react";
 import { redirect } from "next/navigation";
 import { deleteInquiry, logoutAdmin, logoutAllAdminSessions, purgeOldInquiries, updateInquiryContacted } from "@/app/actions";
 import { AdminNotice } from "@/app/admin/admin-fields";
-import { SectionHeading } from "@/components/section-heading";
+import { AdminHeading } from "@/app/admin/admin-heading";
 import { isAdminAuthenticated } from "@/lib/admin-auth";
 import { lastAutoPurgeAt, runAutoPurge } from "@/lib/auto-purge-db";
 import { BOOKING_TIME_ZONE, formatStoredDate } from "@/lib/booking-time";
 import { prisma } from "@/lib/prisma";
+import { AdminHeader } from "@/app/admin/admin-header";
 import {
   EMAIL_ISSUE_STATUSES,
   INQUIRY_FILTERS,
@@ -110,10 +111,12 @@ export default async function AdminPage({ searchParams }: { searchParams: Promis
   const lastShown = skip + inquiries.length;
 
   return (
+    <>
+      <AdminHeader current="requests" />
     <main className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
       <div className="flex flex-col gap-5 sm:flex-row sm:items-start sm:justify-between">
-        <SectionHeading level="h1"
-          eyebrow="Admin"
+        <AdminHeading
+         
           title="FM Media dashboard"
           copy="Review booking requests and jump into services or gallery management."
         />
@@ -149,7 +152,7 @@ export default async function AdminPage({ searchParams }: { searchParams: Promis
       {followUpCount > 0 ? (
         <p className="mt-4 rounded-md border border-clay bg-white px-4 py-3 text-sm font-medium text-clay" role="status">
           {followUpCount} {followUpCount === 1 ? "inquiry has" : "inquiries have"} no notification email.{" "}
-          <Link href={listHref("email-issue")} className="focus-ring underline">
+          <Link href={listHref("email-issue")} className="focus-ring inline-flex min-h-[44px] items-center underline">
             Show them
           </Link>
         </p>
@@ -177,7 +180,7 @@ export default async function AdminPage({ searchParams }: { searchParams: Promis
                 <Link
                   href={listHref(key)}
                   aria-current={key === filter ? "page" : undefined}
-                  className={`focus-ring inline-block rounded-full border px-4 py-1.5 text-sm font-semibold ${
+                  className={`focus-ring inline-flex min-h-[44px] items-center rounded-full border px-4 text-sm font-semibold ${
                     key === filter ? "border-ink bg-ink text-white" : "border-line bg-white text-ink hover:border-clay"
                   }`}
                 >
@@ -247,22 +250,37 @@ export default async function AdminPage({ searchParams }: { searchParams: Promis
                     <form action={updateInquiryContacted} className="flex items-center gap-3">
                       <input type="hidden" name="id" value={inquiry.id} />
                       <input type="hidden" name="returnTo" value={returnTo} />
-                      <label className="flex items-center gap-2 text-sm font-medium text-ink">
-                        <input name="contacted" type="checkbox" defaultChecked={inquiry.status === "CONTACTED"} className="h-4 w-4 accent-clay" />
+                      <label className="flex min-h-[44px] items-center gap-2 text-sm font-medium text-ink">
+                        <input
+                          name="contacted"
+                          type="checkbox"
+                          defaultChecked={inquiry.status === "CONTACTED"}
+                          aria-label={`Contacted: ${inquiry.name}`}
+                          className="h-6 w-6 accent-clay"
+                        />
                         Contacted
                       </label>
-                      <button className="focus-ring rounded-full border border-line px-3 py-1 text-xs font-semibold text-ink hover:border-clay">
+                      <button
+                        aria-label={`Save contacted status for ${inquiry.name}`}
+                        className="focus-ring min-h-[44px] rounded-full border border-line px-4 text-sm font-semibold text-ink hover:border-clay"
+                      >
                         Save
                       </button>
                     </form>
                     <form action={deleteInquiry} className="flex items-center gap-3">
                       <input type="hidden" name="id" value={inquiry.id} />
                       <input type="hidden" name="returnTo" value={returnTo} />
-                      <label className="flex items-center gap-2 text-xs font-medium text-ink/70">
-                        <input name="confirmDelete" type="checkbox" required className="h-4 w-4 accent-clay" />
+                      <label className="flex min-h-[44px] items-center gap-2 text-sm font-medium text-ink/80">
+                        <input
+                          name="confirmDelete"
+                          type="checkbox"
+                          required
+                          aria-label={`Confirm deleting the request from ${inquiry.name}`}
+                          className="h-6 w-6 accent-clay"
+                        />
                         Confirm delete
                       </label>
-                      <button className="focus-ring text-sm font-semibold text-clay" aria-label={`Delete inquiry from ${inquiry.name}`}>
+                      <button className="focus-ring min-h-[44px] px-2 text-sm font-semibold text-clay" aria-label={`Delete inquiry from ${inquiry.name}`}>
                         Delete
                       </button>
                     </form>
@@ -276,7 +294,7 @@ export default async function AdminPage({ searchParams }: { searchParams: Promis
         {pageCount > 1 ? (
           <nav aria-label="Inquiry pages" className="mt-6 flex flex-wrap items-center gap-4 text-sm">
             {page > 1 ? (
-              <Link href={listHref(filter, page - 1)} className="focus-ring rounded-full border border-line bg-white px-4 py-1.5 font-semibold text-ink hover:border-clay">
+              <Link href={listHref(filter, page - 1)} className="focus-ring inline-flex min-h-[44px] items-center rounded-full border border-line bg-white px-4 font-semibold text-ink hover:border-clay">
                 Newer
               </Link>
             ) : null}
@@ -284,7 +302,7 @@ export default async function AdminPage({ searchParams }: { searchParams: Promis
               Page {page} of {pageCount}
             </span>
             {page < pageCount ? (
-              <Link href={listHref(filter, page + 1)} className="focus-ring rounded-full border border-line bg-white px-4 py-1.5 font-semibold text-ink hover:border-clay">
+              <Link href={listHref(filter, page + 1)} className="focus-ring inline-flex min-h-[44px] items-center rounded-full border border-line bg-white px-4 font-semibold text-ink hover:border-clay">
                 Older
               </Link>
             ) : null}
@@ -324,7 +342,7 @@ export default async function AdminPage({ searchParams }: { searchParams: Promis
             </span>
           </label>
           <label className="flex items-center gap-2 text-sm font-medium text-ink/80">
-            <input name="confirmDelete" type="checkbox" required className="h-4 w-4 accent-clay" />
+            <input name="confirmDelete" type="checkbox" required className="h-6 w-6 accent-clay" />
             I understand this permanently deletes them
           </label>
           <button className="focus-ring rounded-full border border-clay px-5 py-2 text-sm font-semibold text-clay">Delete old inquiries</button>
@@ -335,5 +353,6 @@ export default async function AdminPage({ searchParams }: { searchParams: Promis
         Spam caught by the booking form trap: {honeypot?.count ?? 0}. These are not saved or emailed.
       </p>
     </main>
+    </>
   );
 }

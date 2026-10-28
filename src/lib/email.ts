@@ -38,7 +38,7 @@ export function bookingEmailText(inquiry: Inquiry) {
     line("Free first-shoot drone photos", inquiry.firstShootOffer ? "Yes - eligible" : "No"),
     "",
     "Message / special instructions:",
-    inquiry.message
+    inquiry.message || "(none)"
   ].join("\n");
 }
 

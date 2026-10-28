@@ -6,6 +6,7 @@ import { useCallback, useEffect, useRef, useState, type FormEvent } from "react"
 import { useFormStatus } from "react-dom";
 import { discardUnsavedGalleryUpload } from "@/app/actions";
 import { Checkbox, TextInput } from "@/app/admin/admin-fields";
+import { CAPTION_MESSAGES } from "@/lib/captions";
 import {
   ALLOWED_IMAGE_TYPES,
   CLIENT_UPLOAD_TIMEOUT_MS,
@@ -31,6 +32,8 @@ type GalleryImageFormValues = {
   title?: string;
   alt?: string;
   category?: string;
+  shoot?: string | null;
+  town?: string | null;
   imageUrl?: string;
   width?: number;
   height?: number;
@@ -77,7 +80,8 @@ function SubmitButton({
 }
 
 export function GalleryImageForm({ action, defaults, fileLabel, submitLabel, requireFile = false }: GalleryImageFormProps) {
-  const hintId = `${defaults?.id ?? "new"}-image-hint`;
+  const formId = defaults?.id ?? "new";
+  const hintId = `${formId}-image-hint`;
   const formRef = useRef<HTMLFormElement>(null);
   const fileRef = useRef<HTMLInputElement>(null);
   const imageUrlRef = useRef<HTMLInputElement>(null);
@@ -246,9 +250,52 @@ export function GalleryImageForm({ action, defaults, fileLabel, submitLabel, req
     <form ref={formRef} action={action} onSubmit={handleSubmit} className="mt-5 grid gap-4">
       {defaults?.id ? <input type="hidden" name="id" value={defaults.id} /> : null}
       <input ref={imageUrlRef} type="hidden" name="imageUrl" defaultValue={defaults?.imageUrl ?? ""} />
-      <TextInput name="title" label="Title" defaultValue={defaults?.title} />
-      <TextInput name="alt" label="Alt Text" defaultValue={defaults?.alt} />
-      <TextInput name="category" label="Category" defaultValue={defaults?.category} />
+      {/* Legal R2 (round 1): titles, shoots, towns and alt text are public captions. */}
+      <TextInput
+        name="title"
+        label="Title"
+        defaultValue={defaults?.title}
+        idPrefix={formId}
+        placeholder="Front exterior"
+        hint="No street names or house numbers."
+      />
+      <TextInput
+        name="alt"
+        label="Alt Text"
+        defaultValue={defaults?.alt}
+        idPrefix={formId}
+        placeholder="Living room with sectional sofa and hardwood floor"
+        hint="Describe what the photo shows, for people who can't see it. No street names or house numbers."
+      />
+      <TextInput name="category" label="Category" defaultValue={defaults?.category} idPrefix={formId} />
+      {/* Batch 5: the portfolio groups photos by shoot and captions them by town. */}
+      <div className="grid gap-4 sm:grid-cols-2">
+        <TextInput
+          name="shoot"
+          label="Shoot (optional)"
+          defaultValue={defaults?.shoot ?? ""}
+          required={false}
+          maxLength={80}
+          idPrefix={formId}
+          placeholder="Frame house"
+          hint="Photos with the same shoot name show together on the portfolio. No street names or house numbers."
+          // QA-27: checked before sending, so a refused value never loses the other edits.
+          pattern="(?!#)[^\p{Nd}]*"
+          patternMessage={CAPTION_MESSAGES.shoot}
+        />
+        <TextInput
+          name="town"
+          label="Town (optional)"
+          defaultValue={defaults?.town ?? ""}
+          required={false}
+          maxLength={60}
+          idPrefix={formId}
+          placeholder="Oak Park"
+          hint="The town only. No street names or house numbers."
+          pattern="[^\p{Nd}]*"
+          patternMessage={CAPTION_MESSAGES.town}
+        />
+      </div>
       <label className="grid gap-1 text-sm font-medium text-ink">
         {fileLabel}
         <input
@@ -258,9 +305,10 @@ export function GalleryImageForm({ action, defaults, fileLabel, submitLabel, req
           accept={ALLOWED_IMAGE_TYPES.join(",")}
           required={requireFile}
           aria-describedby={hintId}
-          className="rounded-md border border-line px-3 py-2 font-normal file:mr-3 file:rounded-full file:border-0 file:bg-ink file:px-3 file:py-1.5 file:text-sm file:font-semibold file:text-white"
+          className="rounded-md border border-line px-3 py-2 font-normal file:mr-3 file:rounded-full file:border-0 file:bg-ink file:px-3 file:py-1.5 file:text-sm file:font-semibold file:text-white" /* taste-skill-ignore: a real file input (admin, batch 5b) */
         />
-        <span id={hintId} className="text-xs font-normal text-ink/55">
+        {/* QA-23: 14px at 6.9:1 (was 12px at 3.98:1). */}
+        <span id={hintId} className="text-sm font-normal text-ink/80">
           JPEG, PNG, WebP, or AVIF. Max 10 MB.
         </span>
       </label>

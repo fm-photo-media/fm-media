@@ -5,9 +5,10 @@ import { notFound, redirect } from "next/navigation";
 import { deleteGalleryImage, updateGalleryImage } from "@/app/actions";
 import { AdminNotice } from "@/app/admin/admin-fields";
 import { GalleryImageForm } from "@/app/admin/gallery/gallery-image-form";
-import { SectionHeading } from "@/components/section-heading";
+import { AdminHeading } from "@/app/admin/admin-heading";
 import { isAdminAuthenticated } from "@/lib/admin-auth";
 import { canRenderGalleryImage, galleryImageNotice } from "@/lib/gallery-visibility";
+import { AdminHeader } from "@/app/admin/admin-header";
 import { prisma } from "@/lib/prisma";
 
 export const dynamic = "force-dynamic";
@@ -38,6 +39,8 @@ export default async function EditGalleryImagePage({
       title: true,
       alt: true,
       category: true,
+      shoot: true,
+      town: true,
       imageUrl: true,
       width: true,
       height: true,
@@ -51,11 +54,13 @@ export default async function EditGalleryImagePage({
   }
 
   return (
+    <>
+      <AdminHeader current="gallery" />
     <main className="mx-auto max-w-4xl px-4 py-8 sm:px-6 lg:px-8">
-      <Link href="/admin/gallery" className="focus-ring text-sm font-semibold text-clay hover:text-ink">
+      <Link href="/admin/gallery" className="focus-ring inline-flex min-h-[44px] items-center text-sm font-semibold text-clay hover:text-ink">
         Back to Gallery
       </Link>
-      <SectionHeading level="h1" eyebrow="Admin" title={`Edit ${image.title}`} copy="Update labels, dimensions, visibility, or replace the uploaded image file." />
+      <AdminHeading title={`Edit ${image.title}`} copy="Update labels, dimensions, visibility, or replace the uploaded image file." />
       <AdminNotice error={notice.error} success={notice.success} />
 
       <article className="mt-8 rounded-lg border border-line bg-white p-5">
@@ -84,13 +89,14 @@ export default async function EditGalleryImagePage({
         <form action={deleteGalleryImage} className="mt-8">
           <input type="hidden" name="id" value={image.id} />
           <input type="hidden" name="returnTo" value={`/admin/gallery/${image.id}`} />
-          <label className="mr-4 inline-flex items-center gap-2 text-sm text-ink/70">
-            <input name="confirmDelete" type="checkbox" required className="h-4 w-4 accent-clay" />
+          <label className="mr-4 inline-flex min-h-[44px] items-center gap-2 text-sm text-ink/80">
+            <input name="confirmDelete" type="checkbox" required className="h-6 w-6 accent-clay" />
             Confirm delete
           </label>
-          <button className="focus-ring text-sm font-semibold text-clay">Delete image</button>
+          <button className="focus-ring min-h-[44px] px-2 text-sm font-semibold text-clay">Delete image</button>
         </form>
       </article>
     </main>
+    </>
   );
 }

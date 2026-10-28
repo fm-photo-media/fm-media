@@ -1,13 +1,59 @@
+import type { Metadata } from "next";
 import Link from "next/link";
+import { BrandPanel } from "@/components/photo";
+import { SiteFooter } from "@/components/site-footer";
+import { SiteHeader } from "@/components/site-header";
+import { BUSINESS } from "@/lib/business";
 
+export const metadata: Metadata = {
+  title: "Page not found",
+  robots: { index: false, follow: true }
+};
+
+// Batch 5 (design.md "404"): the root not-found renders outside the (site) group, so it
+// brings the public header and footer itself. The photo slot shows the no-photo panel.
 export default function NotFound() {
   return (
-    <main className="mx-auto max-w-7xl px-4 py-20 sm:px-6 lg:px-8">
-      <h1 className="font-serif text-5xl">Page not found</h1>
-      <p className="mt-4 max-w-xl text-ink/70">The page may have moved, or the shoot you wanted is already off the board.</p>
-      <Link href="/" className="focus-ring mt-8 inline-flex rounded-full bg-ink px-6 py-3 text-sm font-semibold text-white">
-        Return Home
-      </Link>
-    </main>
+    <>
+      <SiteHeader />
+      <main id="main">
+        <section className="wrap nf" aria-labelledby="h1">
+          <div>
+            <h1 className="h1" id="h1">
+              This page isn&apos;t here
+            </h1>
+            <p className="lede">The link may be old, or the address has a typo. Everything else is one tap away.</p>
+            <ul className="nf__links fact">
+              <li>
+                <Link href="/">Home</Link>
+              </li>
+              <li>
+                <Link href="/services">Services and pricing</Link>
+              </li>
+              <li>
+                <Link href="/portfolio">Portfolio</Link>
+              </li>
+              <li>
+                <Link href="/contact">Book a shoot</Link>
+              </li>
+            </ul>
+            <p className="nf__act">
+              <Link className="btn" href="/">
+                Go to the home page
+              </Link>
+            </p>
+            <p className="fact nf__call">
+              Or call or text{" "}
+              <a className="link tap" href={`tel:${BUSINESS.phoneE164}`}>
+                {BUSINESS.phoneDisplay}
+              </a>
+              .
+            </p>
+          </div>
+          <BrandPanel />
+        </section>
+      </main>
+      <SiteFooter />
+    </>
   );
 }

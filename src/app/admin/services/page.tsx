@@ -3,8 +3,9 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { createService, deleteService, updateService } from "@/app/actions";
 import { AdminNotice, Checkbox, TextInput } from "@/app/admin/admin-fields";
-import { SectionHeading } from "@/components/section-heading";
+import { AdminHeading } from "@/app/admin/admin-heading";
 import { isAdminAuthenticated } from "@/lib/admin-auth";
+import { AdminHeader } from "@/app/admin/admin-header";
 import { prisma } from "@/lib/prisma";
 
 export const dynamic = "force-dynamic";
@@ -23,11 +24,13 @@ export default async function AdminServicesPage({ searchParams }: { searchParams
   const services = await prisma.service.findMany({ orderBy: [{ sortOrder: "asc" }, { updatedAt: "desc" }] });
 
   return (
+    <>
+      <AdminHeader current="services" />
     <main className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
-      <Link href="/admin" className="focus-ring text-sm font-semibold text-clay hover:text-ink">
+      <Link href="/admin" className="focus-ring inline-flex min-h-[44px] items-center text-sm font-semibold text-clay hover:text-ink">
         Back to Admin
       </Link>
-      <SectionHeading level="h1" eyebrow="Admin" title="Manage services and packages." copy="Add, edit, publish, feature, or delete pricing packages." />
+      <AdminHeading title="Manage services and packages." copy="Add, edit, publish, feature, or delete pricing packages." />
       <AdminNotice error={notice.error} success={notice.success} />
 
       <section className="mt-10 rounded-lg border border-line bg-white p-5">
@@ -95,21 +98,32 @@ export default async function AdminServicesPage({ searchParams }: { searchParams
                 <div className="flex flex-wrap items-center gap-5">
                   <Checkbox name="featured" label="Featured" defaultChecked={service.featured} />
                   <Checkbox name="published" label="Published" defaultChecked={service.published} />
-                  <button className="focus-ring rounded-full bg-ink px-5 py-2 text-sm font-semibold text-white">Save</button>
+                  <button aria-label={`Save ${service.title}`} className="focus-ring min-h-[44px] rounded-full bg-ink px-5 text-sm font-semibold text-white">
+                    Save
+                  </button>
                 </div>
               </form>
               <form action={deleteService} className="mt-3">
                 <input type="hidden" name="id" value={service.id} />
-                <label className="mr-4 inline-flex items-center gap-2 text-sm text-ink/70">
-                  <input name="confirmDelete" type="checkbox" required className="h-4 w-4 accent-clay" />
+                <label className="mr-4 inline-flex min-h-[44px] items-center gap-2 text-sm text-ink/80">
+                  <input
+                    name="confirmDelete"
+                    type="checkbox"
+                    required
+                    aria-label={`Confirm deleting ${service.title}`}
+                    className="h-6 w-6 accent-clay"
+                  />
                   Confirm delete
                 </label>
-                <button className="focus-ring text-sm font-semibold text-clay">Delete service</button>
+                <button aria-label={`Delete ${service.title}`} className="focus-ring min-h-[44px] px-2 text-sm font-semibold text-clay">
+                  Delete service
+                </button>
               </form>
             </article>
           ))}
         </div>
       </section>
     </main>
+    </>
   );
 }

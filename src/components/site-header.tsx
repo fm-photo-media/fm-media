@@ -1,52 +1,147 @@
-import Link from "next/link";
+"use client";
 
-const nav = [
-  { href: "/services", label: "Services" },
-  { href: "/portfolio", label: "Portfolio" },
-  { href: "/about", label: "About" }
-];
+import Image from "next/image";
+import Link from "next/link";
+import { usePathname } from "next/navigation";
+import { useCallback, useEffect, useRef, useState, type KeyboardEvent } from "react";
+import { BUSINESS } from "@/lib/business";
+import { NAV } from "@/lib/site";
+
+// Batch 5 (design.md "Header", "Menu sheet"; DES-14, QA-11g): the logo on every public page,
+// the nav with one "Book a shoot", the phone as a tel: link, and below 1000px a "Menu"
+// button that opens a full-screen sheet. The sheet sets aria-expanded, closes on Esc, on a
+// link tap, on Close and on route change, keeps Tab inside it, and returns focus to Menu.
+
+function isCurrent(pathname: string, href: string) {
+  return href === "/" ? pathname === "/" : pathname === href || pathname.startsWith(`${href}/`);
+}
 
 export function SiteHeader() {
+  const pathname = usePathname() ?? "/";
+  const [open, setOpen] = useState(false);
+  const buttonRef = useRef<HTMLButtonElement>(null);
+  const sheetRef = useRef<HTMLDivElement>(null);
+  const closeRef = useRef<HTMLButtonElement>(null);
+  const wasOpen = useRef(false);
+
+  const close = useCallback(() => setOpen(false), []);
+
+  // A navigation closes the sheet (the sheet's links also close it on tap).
+  useEffect(() => {
+    setOpen(false);
+  }, [pathname]);
+
+  useEffect(() => {
+    if (open) {
+      wasOpen.current = true;
+      document.body.style.overflow = "hidden";
+      closeRef.current?.focus();
+    } else {
+      document.body.style.overflow = "";
+      if (wasOpen.current) buttonRef.current?.focus();
+      wasOpen.current = false;
+    }
+    return () => {
+      document.body.style.overflow = "";
+    };
+  }, [open]);
+
+  function onSheetKeyDown(event: KeyboardEvent<HTMLDivElement>) {
+    if (event.key === "Escape") {
+      event.preventDefault();
+      close();
+      return;
+    }
+    if (event.key !== "Tab" || !sheetRef.current) return;
+    const focusable = sheetRef.current.querySelectorAll<HTMLElement>("a[href], button");
+    const first = focusable[0];
+    const last = focusable[focusable.length - 1];
+    if (event.shiftKey && document.activeElement === first) {
+      event.preventDefault();
+      last.focus();
+    } else if (!event.shiftKey && document.activeElement === last) {
+      event.preventDefault();
+      first.focus();
+    }
+  }
+
+  const current = (href: string) => (isCurrent(pathname, href) ? ("page" as const) : undefined);
+
   return (
-    <header className="sticky top-0 z-30 border-b border-line/80 bg-[#fbfaf8]/90 backdrop-blur">
-      <div className="mx-auto flex max-w-7xl items-center justify-between gap-4 px-4 py-3 sm:px-6 lg:px-8">
-        <div className="flex items-center justify-between gap-4">
-          <Link href="/" className="focus-ring font-serif text-xl tracking-normal">
-            FM Media
+    <>
+      <a className="skip" href="#main">
+        Skip to content
+      </a>
+      <header className="top">
+        <div className="wrap">
+          <Link className="top__logo" href="/" aria-current={current("/")}>
+            <Image src="/brand/logo-full.png" width={564} height={519} alt="FM Media" priority sizes="(max-width: 640px) 74px, 113px" />
           </Link>
+          <nav aria-label="Main">
+            <ul className="top__nav">
+              {NAV.map((item) => (
+                <li key={item.href}>
+                  <Link href={item.href} aria-current={current(item.href)}>
+                    {item.label}
+                  </Link>
+                </li>
+              ))}
+              <li className="keep">
+                <a className="call" href={`tel:${BUSINESS.phoneE164}`}>
+                  {BUSINESS.phoneDisplay}
+                </a>
+              </li>
+              <li className="keep">
+                <button
+                  ref={buttonRef}
+                  className="menu-btn"
+                  type="button"
+                  aria-expanded={open}
+                  aria-controls="menu"
+                  onClick={() => setOpen(true)}
+                >
+                  Menu
+                </button>
+              </li>
+            </ul>
+          </nav>
         </div>
-        <nav aria-label="Primary navigation" className="hidden items-center gap-x-6 text-sm font-medium md:flex">
-          {nav.map((item) => (
-            <Link key={item.href} href={item.href} className="focus-ring text-ink/70 transition hover:text-ink">
+      </header>
+      <div
+        ref={sheetRef}
+        className="sheet"
+        id="menu"
+        role="dialog"
+        aria-modal="true"
+        aria-label="Menu"
+        hidden={!open}
+        onKeyDown={onSheetKeyDown}
+      >
+        <div className="sheet__head">
+          <Image src="/brand/logo-full.png" width={564} height={519} alt="FM Media" sizes="74px" />
+          <button ref={closeRef} className="menu-btn" type="button" onClick={close}>
+            Close
+          </button>
+        </div>
+        <nav aria-label="Menu">
+          <Link href="/" aria-current={current("/")} onClick={close}>
+            Home
+          </Link>
+          {NAV.map((item) => (
+            <Link key={item.href} href={item.href} aria-current={current(item.href)} onClick={close}>
               {item.label}
             </Link>
           ))}
         </nav>
-        <Link
-          href="/contact"
-          className="focus-ring hidden rounded-full bg-ink px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-clay md:inline-flex"
-        >
-          Book a Shoot
-        </Link>
-        <details className="relative md:hidden">
-          <summary className="focus-ring list-none rounded-full border border-line bg-white px-4 py-2 text-sm font-semibold text-ink shadow-sm">
-            Menu
-          </summary>
-          <nav
-            aria-label="Mobile navigation"
-            className="absolute right-0 top-12 z-40 grid min-w-44 gap-1 rounded-lg border border-line bg-white p-2 text-sm font-medium shadow-soft"
-          >
-            {nav.map((item) => (
-              <Link key={item.href} href={item.href} className="focus-ring rounded-md px-3 py-2 text-ink/75 hover:bg-mist hover:text-ink">
-                {item.label}
-              </Link>
-            ))}
-            <Link href="/contact" className="focus-ring rounded-md bg-ink px-3 py-2 text-white hover:bg-clay">
-              Book a Shoot
-            </Link>
-          </nav>
-        </details>
+        <div className="sheet__acts">
+          <a className="btn" href={`sms:${BUSINESS.phoneE164}`}>
+            Text {BUSINESS.phoneDisplay}
+          </a>
+          <a className="btn btn--quiet" href={`tel:${BUSINESS.phoneE164}`}>
+            Call
+          </a>
+        </div>
       </div>
-    </header>
+    </>
   );
 }

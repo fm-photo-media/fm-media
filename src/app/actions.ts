@@ -387,7 +387,6 @@ export async function createInquiry(_: FormState, formData: FormData): Promise<F
 function revalidateServicePages() {
   revalidatePath("/");
   revalidatePath("/services");
-  revalidatePath("/pricing");
   revalidatePath("/contact");
   revalidatePath("/admin");
   revalidatePath("/admin/services");
@@ -443,6 +442,9 @@ export async function deleteService(formData: FormData) {
 function revalidateGalleryPages() {
   revalidatePath("/");
   revalidatePath("/portfolio");
+  // Batch 5: the services side photo and About use the featured uploads too.
+  revalidatePath("/services");
+  revalidatePath("/about");
   revalidatePath("/admin");
   revalidatePath("/admin/gallery");
 }
@@ -456,6 +458,15 @@ function parseGalleryImage(formData: FormData, imageUrl: string) {
   });
 }
 
+/** QA-27: a refused shoot or town gets its own notice instead of the generic image error. */
+function galleryErrorCode(issues: { path: (string | number)[] }[]) {
+  const fields = new Set(issues.map((issue) => String(issue.path[0])));
+  if (fields.size === 1 && fields.has("shoot")) return "invalid-shoot";
+  if (fields.size === 1 && fields.has("town")) return "invalid-town";
+  if (fields.size === 2 && fields.has("shoot") && fields.has("town")) return "invalid-caption";
+  return "invalid-image";
+}
+
 export async function createGalleryImage(formData: FormData) {
   await requireAdmin();
   const returnTo = "/admin/gallery";
@@ -465,7 +476,7 @@ export async function createGalleryImage(formData: FormData) {
   if (!parsed.success) {
     // SEC-21: the URL may be another row's file (a stale or crafted hidden field).
     await deleteBlobIfUnused(newBlobUrl);
-    redirect(withParams(returnTo, { error: "invalid-image" }));
+    redirect(withParams(returnTo, { error: galleryErrorCode(parsed.error.issues) }));
   }
 
   await prisma.galleryImage.create({ data: parsed.data });
@@ -489,7 +500,7 @@ export async function updateGalleryImage(formData: FormData) {
   if (!parsed.success) {
     // SEC-21: the URL may be another row's file (a stale or crafted hidden field).
     await deleteBlobIfUnused(newBlobUrl);
-    redirect(withParams(returnTo, { error: "invalid-image" }));
+    redirect(withParams(returnTo, { error: galleryErrorCode(parsed.error.issues) }));
   }
 
   await prisma.galleryImage.update({ where: { id }, data: parsed.data });

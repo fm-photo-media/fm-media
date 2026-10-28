@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { makeInquirySchema, type BookingOptions } from "./validation";
+import { NO_PHOTO_PACKAGE, makeInquirySchema, serviceSchema, type BookingOptions } from "./validation";
 
 const LS = String.fromCharCode(0x2028);
 const PS = String.fromCharCode(0x2029);
@@ -155,4 +155,38 @@ test("SEC-18: line breaks and control characters in single-line fields collapse 
   }
   // The message keeps its line breaks.
   assert.equal(ok({ message: "Line one\nLine two is here" }).message, "Line one\nLine two is here");
+});
+
+// DES-25 (batch 5a round 1): the message is optional; the length cap and line handling stay.
+test("message is optional: missing, blank or a single word all save", () => {
+  const { message: _omit, ...withoutMessage } = base;
+  void _omit;
+  assert.equal(schema.safeParse(withoutMessage).success, true);
+  assert.equal(ok({ message: "" }).message, "");
+  assert.equal(ok({ message: "   " }).message, "");
+  assert.equal(ok({ message: "vacant" }).message, "vacant");
+  assert.ok(fieldErrors({ message: "x".repeat(4001) }).message);
+});
+
+// DES-26: "No photos, other services only" posts "none", which means no package.
+test("photoPackage 'none' means no package", () => {
+  assert.equal(ok({ photoPackage: "none", addOns: "floor-plans" }).photoPackage, NO_PHOTO_PACKAGE);
+  assert.ok(fieldErrors({ photoPackage: "none" }).services);
+  assert.ok(fieldErrors({ photoPackage: "none", addOns: "drone-photos", firstShootOffer: "on" }).firstShootOffer);
+});
+
+// Security (5a final): the booking form's "none" value can never be a real service slug.
+test("serviceSchema reserves the slug 'none'", () => {
+  const service = {
+    title: "Twilight",
+    slug: "none",
+    category: "PHOTO",
+    summary: "A summary that is long enough.",
+    description: "A description that is long enough to pass.",
+    startingAt: 100,
+    deliverable: "Photos",
+    turnaround: "Confirmed when you book"
+  };
+  assert.equal(serviceSchema.safeParse(service).success, false);
+  assert.equal(serviceSchema.safeParse({ ...service, slug: "none-extra" }).success, true);
 });

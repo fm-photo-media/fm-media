@@ -1,12 +1,13 @@
 import { z } from "zod";
-import { BOOKING_LIMITS } from "@/lib/booking-limits";
+import { BOOKING_LIMITS, NO_PACKAGE_VALUE } from "@/lib/booking-limits";
 import { TIME_WINDOWS, checkBookingSlot, isValidTimeInput, storedDateFromInput, windowForTime } from "@/lib/booking-time";
+import { CAPTION_MESSAGES, isSafeShootName, isSafeTownName } from "@/lib/captions";
 import { singleLine } from "@/lib/text";
 import { isAllowedGalleryImageUrl } from "@/lib/upload";
 
 // QA-2: the booking form's options come from published Service rows.
 // `value` is the service slug the form posts; `label` ("Basic - $100") is what gets stored.
-export type BookingOption = { value: string; label: string };
+export type BookingOption = { value: string; label: string; display?: string };
 export type BookingOptions = {
   photoPackages: BookingOption[];
   addOns: BookingOption[];
@@ -16,7 +17,7 @@ export type BookingOptions = {
 export const NO_PHOTO_PACKAGE = "No photo package selected";
 export const STALE_OPTION = "That option is no longer offered. Please choose again.";
 
-export { BOOKING_LIMITS };
+export { BOOKING_LIMITS, NO_PACKAGE_VALUE };
 
 const text = (max: number, tooLong = `Keep this under ${max} characters.`) => z.string().trim().max(max, tooLong);
 // SEC-18: single-line fields lose line breaks and control characters (collapsed to a
@@ -60,7 +61,11 @@ export function makeInquirySchema({ options, now = () => new Date() }: { options
           const digits = value.replace(/[,\s]/g, "").replace(/sq\.?ft\.?$/i, "");
           return !digits || (/^\d+$/.test(digits) && Number(digits) >= 100 && Number(digits) <= 100000);
         }, "Enter the approximate square footage as a number, like 1800."),
-      photoPackage: text(100).optional().default(""),
+      // DES-26: "No photos, other services only" posts NO_PACKAGE_VALUE, which means no package.
+      photoPackage: text(100)
+        .optional()
+        .default("")
+        .transform((value) => (value === NO_PACKAGE_VALUE ? "" : value)),
       addOns: text(500).optional().default(""),
       videoService: text(500).optional().default(""),
       // Only a ticked checkbox ("on") or JSON `true` claims the offer (QA-1, LEG-4, SEC-13).
@@ -72,7 +77,8 @@ export function makeInquirySchema({ options, now = () => new Date() }: { options
         .default("")
         .refine((value) => !value || isValidTimeInput(value), "Choose a time like 09:30, or leave it blank."),
       preferredWindow: z.enum(TIME_WINDOWS, { message: "Choose a time window." }).optional().default("Flexible"),
-      message: text(BOOKING_LIMITS.message).pipe(z.string().min(10, "Tell us a little about the shoot."))
+      // DES-25 (batch 5a round 1): optional. The length cap stays; line breaks are kept.
+      message: text(BOOKING_LIMITS.message).optional().default("")
     })
     .superRefine((value, ctx) => {
       const issue = (path: string, message: string) => ctx.addIssue({ code: z.ZodIssueCode.custom, path: [path], message });
@@ -125,7 +131,9 @@ export const serviceSchema = z.object({
     .trim()
     .min(2)
     .max(80)
-    .regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/, "Use a URL-friendly slug."),
+    .regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/, "Use a URL-friendly slug.")
+    // Security (5a final): "none" is the booking form's "No photos" value, so no service may use it.
+    .refine((value) => value !== NO_PACKAGE_VALUE, `The slug "${NO_PACKAGE_VALUE}" is reserved.`),
   category: z.string().trim().min(2).max(40).default("PHOTO"),
   priceLabel: z.string().trim().max(60).optional(),
   bestUse: z.string().trim().max(160).optional(),
@@ -139,6 +147,16 @@ export const serviceSchema = z.object({
   featured: z.coerce.boolean().optional().default(false),
   published: z.coerce.boolean().optional().default(false)
 });
+
+export { CAPTION_MESSAGES };
+
+/** An optional single-line caption field: blank or missing becomes null. */
+function optionalCaption(max: number, allowed: (value: string) => boolean, message: string) {
+  return z.preprocess(
+    (value) => (typeof value === "string" ? singleLine(value).trim() || null : null),
+    z.string().max(max).refine(allowed, message).nullable()
+  );
+}
 
 export const galleryImageSchema = z.object({
   title: z.string().trim().min(2).max(160),
@@ -154,6 +172,11 @@ export const galleryImageSchema = z.object({
       (value) => isAllowedGalleryImageUrl(value, process.env.BLOB_READ_WRITE_TOKEN),
       "Upload your own image file. Outside links, such as stock photos, can't be used."
     ),
+  // Batch 5: optional grouping for the portfolio, captioned "[Shoot], [Town]". Never a
+  // street address, so a town with digits or a shoot starting with a house number is refused.
+  // Legal R2 / QA-27 (round 1): no digit of any script anywhere, and no leading "#".
+  shoot: optionalCaption(80, isSafeShootName, CAPTION_MESSAGES.shoot),
+  town: optionalCaption(60, isSafeTownName, CAPTION_MESSAGES.town),
   width: z.coerce.number().int().min(320).default(1600),
   height: z.coerce.number().int().min(240).default(1100),
   featured: z.coerce.boolean().optional().default(false),

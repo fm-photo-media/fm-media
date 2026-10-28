@@ -1,50 +1,64 @@
+import Image from "next/image";
 import Link from "next/link";
 import { BUSINESS } from "@/lib/business";
+import { NAV } from "@/lib/site";
 
-// LEG-2 (batch4-copy section 3): the business identity replaces the old tagline.
-// LEG-1 (section 2): Privacy Policy and Terms of Service links on every page.
+// Batch 5 (design.md "Footer card"): Francisco's business card as the page's close: blue
+// bands, the logo, "Real Estate Media", the contact lines, a send line with "Book a shoot",
+// then the link rows. LEG-2 (batch4-copy section 3): name, owner, call/text, email and the
+// Chicagoland service area. LEG-1: Privacy Policy and Terms of Service on every page.
+// QA-11: every footer link is at least 44px tall.
 export function SiteFooter() {
   return (
-    <footer className="bg-mist">
-      <div className="mx-auto grid max-w-7xl gap-8 px-4 py-10 text-sm text-ink/70 sm:px-6 md:grid-cols-[1fr_auto] lg:px-8">
-        <div>
-          <p className="font-serif text-xl text-ink">{BUSINESS.name}</p>
-          <p className="mt-2 max-w-md">{BUSINESS.tagline}</p>
-          <p className="mt-1">Owner: {BUSINESS.owner}</p>
-          <p className="mt-1">
-            Call or text{" "}
-            <a href={`tel:${BUSINESS.phoneE164}`} className="focus-ring font-semibold text-ink underline">
-              {BUSINESS.phoneDisplay}
-            </a>
-            {" · "}
-            <a href={`sms:${BUSINESS.phoneE164}`} className="focus-ring font-semibold text-ink underline">
-              Send a text
-            </a>
-          </p>
-          <p className="mt-1">
-            <a href={`mailto:${BUSINESS.email}`} className="focus-ring font-semibold text-ink underline">
-              {BUSINESS.email}
-            </a>
-          </p>
-          <p className="mt-3">© 2026 {BUSINESS.name}</p>
+    <footer className="foot on-blue">
+      <h2 className="vh">Contact {BUSINESS.name}</h2>
+      <div className="bizcard">
+        <div className="bizcard__brand">
+          <Image
+            src="/brand/logo-full.png"
+            width={564}
+            height={519}
+            sizes="320px"
+            alt="FM Media logo: a house drawn from the letters F and M, with a drone on the roof and a camera aperture in the window"
+          />
+          <p className="bizcard__tag">Real Estate Media</p>
         </div>
-        <nav aria-label="Footer" className="flex flex-wrap content-start gap-5 md:justify-end">
-          <Link href="/portfolio" className="focus-ring hover:text-ink">
-            Portfolio
+        <div className="bizcard__lines">
+          <a href={`tel:${BUSINESS.phoneE164}`}>{BUSINESS.phoneDisplay}</a>
+          <a href={`sms:${BUSINESS.phoneE164}`}>Send a text</a>
+          <a href={`mailto:${BUSINESS.email}`}>{BUSINESS.email}</a>
+          <a href="https://fm-media.org">fm-media.org</a>
+          <span>Serving {BUSINESS.serviceArea}</span>
+          <span className="bizcard__owner">Owner: {BUSINESS.owner}</span>
+        </div>
+        <div className="bizcard__send">
+          <p>Send the address, the square footage and a day that works.</p>
+          <Link className="btn" href="/contact#form">
+            Book a shoot
           </Link>
-          <Link href="/services" className="focus-ring hover:text-ink">
-            Services
-          </Link>
-          <Link href="/contact" className="focus-ring hover:text-ink">
-            Contact
-          </Link>
-          <Link href="/privacy" className="focus-ring hover:text-ink">
-            Privacy Policy
-          </Link>
-          <Link href="/terms" className="focus-ring hover:text-ink">
-            Terms of Service
-          </Link>
+        </div>
+      </div>
+      <div className="foot__links">
+        <nav aria-label="Footer">
+          <ul>
+            {NAV.map((item) => (
+              <li key={item.href}>
+                <Link href={item.href}>{item.label}</Link>
+              </li>
+            ))}
+          </ul>
         </nav>
+        <ul>
+          <li>
+            <Link href="/privacy">Privacy Policy</Link>
+          </li>
+          <li>
+            <Link href="/terms">Terms of Service</Link>
+          </li>
+          <li>
+            <span>© 2026 {BUSINESS.name}</span>
+          </li>
+        </ul>
       </div>
     </footer>
   );

@@ -26,6 +26,8 @@ This policy explains how FM Media ("we", "us"), a real estate photography busine
 
 We also record when your request arrived and whether our notification email about it was sent.
 
+**When you call, text or email us.** If you use the Site's call, text or email links, your message goes straight to our phone or inbox, not through the Site. We use what you send, such as the property address and the shoot you want, in the same way as a booking request.
+
 **Spam protection.** When someone sends the booking form or tries to sign in to our admin area, the Site stores a scrambled code made from the connection's IP address (a keyed, one-way hash), not the IP address itself, together with the time. We use it only to limit how many requests one connection can send. Old entries are deleted automatically.
 
 **Automatically, through our host.** Like most websites, our hosting provider processes technical information when you visit, such as your IP address, browser type and the pages you request. This is used to deliver and secure the Site, and the host keeps it only briefly under its own policies.
@@ -63,7 +65,7 @@ Photos in our online portfolio are public. How we may use photos from a shoot is
 
 We keep booking requests in our booking system for up to 24 months after we receive them, then delete them.
 
-A copy of each request also arrives in our email inbox, and that copy stays there until we delete it. If you ask us to delete your information, we delete the inbox copy too. Our email-sending provider keeps its own record of each notification for up to 30 days.
+A copy of each request also arrives in our email inbox, and that copy stays there until we delete it. Texts and emails you send us directly stay on our phone or in our inbox until we delete them. If you ask us to delete your information, we delete those copies too. Our email-sending provider keeps its own record of each notification for up to 30 days.
 
 Invoices and records of completed shoots, which we keep outside this Site, may be kept longer where tax or accounting rules require.
 

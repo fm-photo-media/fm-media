@@ -13,6 +13,9 @@ model GalleryImage {
   alt       String
   category  String
   imageUrl  String
+  // Batch 5: optional portfolio grouping. The public caption is "[shoot], [town]", never a street address.
+  shoot     String?  @db.VarChar(80)
+  town      String?  @db.VarChar(60)
   width     Int      @default(1600)
   height    Int      @default(1100)
   featured  Boolean  @default(false)

@@ -5,9 +5,10 @@ import { redirect } from "next/navigation";
 import { createGalleryImage, deleteGalleryImage } from "@/app/actions";
 import { AdminNotice } from "@/app/admin/admin-fields";
 import { GalleryImageForm } from "@/app/admin/gallery/gallery-image-form";
-import { SectionHeading } from "@/components/section-heading";
+import { AdminHeading } from "@/app/admin/admin-heading";
 import { isAdminAuthenticated } from "@/lib/admin-auth";
 import { canRenderGalleryImage, galleryImageNotice } from "@/lib/gallery-visibility";
+import { AdminHeader } from "@/app/admin/admin-header";
 import { prisma } from "@/lib/prisma";
 
 export const dynamic = "force-dynamic";
@@ -31,6 +32,8 @@ export default async function AdminGalleryPage({ searchParams }: { searchParams:
       title: true,
       alt: true,
       category: true,
+      shoot: true,
+      town: true,
       imageUrl: true,
       featured: true,
       published: true
@@ -38,11 +41,13 @@ export default async function AdminGalleryPage({ searchParams }: { searchParams:
   });
 
   return (
+    <>
+      <AdminHeader current="gallery" />
     <main className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
-      <Link href="/admin" className="focus-ring text-sm font-semibold text-clay hover:text-ink">
+      <Link href="/admin" className="focus-ring inline-flex min-h-[44px] items-center text-sm font-semibold text-clay hover:text-ink">
         Back to Admin
       </Link>
-      <SectionHeading level="h1" eyebrow="Admin" title="Manage gallery images." copy="Upload photos from your own shoots, update labels, and choose featured portfolio images. Only your own uploads show on the public site." />
+      <AdminHeading title="Manage gallery images." copy="Upload photos from your own shoots, update labels, and choose featured portfolio images. Only your own uploads show on the public site." />
       <AdminNotice error={notice.error} success={notice.success} />
 
       <section className="mt-10 rounded-lg border border-line bg-white p-5">
@@ -59,7 +64,7 @@ export default async function AdminGalleryPage({ searchParams }: { searchParams:
                 <th className="px-4 py-3">
                   <span className="sr-only">Preview</span>
                 </th>
-                <th className="px-4 py-3">Title</th>
+                <th className="px-4 py-3">Title, shoot and town</th>
                 <th className="px-4 py-3">Category</th>
                 <th className="px-4 py-3">Status</th>
                 <th className="px-4 py-3">Edit</th>
@@ -87,7 +92,12 @@ export default async function AdminGalleryPage({ searchParams }: { searchParams:
                       </span>
                     )}
                   </td>
-                  <td className="px-4 py-3 font-medium text-ink">{image.title}</td>
+                  <td className="px-4 py-3 font-medium text-ink">
+                    {image.title}
+                    {image.shoot || image.town ? (
+                      <span className="mt-1 block text-sm font-normal text-ink/75">{[image.shoot, image.town].filter(Boolean).join(", ")}</span>
+                    ) : null}
+                  </td>
                   <td className="px-4 py-3 text-ink/70">{image.category}</td>
                   <td className="px-4 py-3 text-ink/70">
                     {image.published ? "Published" : "Hidden"}
@@ -97,7 +107,11 @@ export default async function AdminGalleryPage({ searchParams }: { searchParams:
                     ) : null}
                   </td>
                   <td className="px-4 py-3">
-                    <Link href={`/admin/gallery/${image.id}`} className="focus-ring text-sm font-semibold text-clay hover:text-ink">
+                    <Link
+                      href={`/admin/gallery/${image.id}`}
+                      aria-label={`Edit ${image.title}`}
+                      className="focus-ring inline-flex min-h-[44px] items-center text-sm font-semibold text-clay hover:text-ink"
+                    >
                       Edit
                     </Link>
                   </td>
@@ -105,11 +119,19 @@ export default async function AdminGalleryPage({ searchParams }: { searchParams:
                     <form action={deleteGalleryImage} className="flex items-center gap-3">
                       <input type="hidden" name="id" value={image.id} />
                       <input type="hidden" name="returnTo" value="/admin/gallery" />
-                      <label className="flex items-center gap-2 text-xs font-medium text-ink/70">
-                        <input name="confirmDelete" type="checkbox" required className="h-4 w-4 accent-clay" />
+                      <label className="flex min-h-[44px] items-center gap-2 text-sm font-medium text-ink/80">
+                        <input
+                          name="confirmDelete"
+                          type="checkbox"
+                          required
+                          aria-label={`Confirm deleting ${image.title}`}
+                          className="h-6 w-6 accent-clay"
+                        />
                         Confirm
                       </label>
-                      <button className="focus-ring text-sm font-semibold text-clay">Delete</button>
+                      <button aria-label={`Delete ${image.title}`} className="focus-ring min-h-[44px] px-2 text-sm font-semibold text-clay">
+                        Delete
+                      </button>
                     </form>
                   </td>
                 </tr>
@@ -126,5 +148,6 @@ export default async function AdminGalleryPage({ searchParams }: { searchParams:
         </div>
       </section>
     </main>
+    </>
   );
 }

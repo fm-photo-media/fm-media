@@ -1,4 +1,6 @@
 import type { Metadata } from "next";
+import Image from "next/image";
+import Link from "next/link";
 import { redirect } from "next/navigation";
 import { loginAdmin } from "@/app/actions";
 import { isAdminAuthenticated } from "@/lib/admin-auth";
@@ -8,7 +10,7 @@ import { loginWaitMessage } from "@/lib/rate-limit";
 export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
-  title: "Admin Login",
+  title: "Sign in",
   description: "Secure sign-in for FM Media site administration.",
   robots: { index: false, follow: false }
 };
@@ -40,16 +42,22 @@ export default async function AdminLoginPage({
   const notice = success ? loginNotices[success] : undefined;
 
   return (
-    <main className="mx-auto flex min-h-[70vh] max-w-md flex-col justify-center px-4 py-14 sm:px-6 lg:px-8">
-      <div className="rounded-lg border border-line bg-white p-6">
-        <p className="text-sm font-semibold uppercase tracking-[0.16em] text-clay">Admin</p>
-        <h1 className="mt-3 font-serif text-3xl text-ink">Sign in</h1>
+    <main className="flex min-h-[100svh] items-center justify-center px-4 py-10">
+      {/* Batch 5 (design.md admin login): a centred card with a blue top band and the full logo. */}
+      <div className="w-full max-w-[400px] border border-[#e1e7f0] border-t-[6px] border-t-blue bg-white p-8">
+        <Image src="/brand/logo-full.png" width={564} height={519} alt="FM Media" priority sizes="120px" className="mx-auto h-auto w-[120px]" />
+        <h1 className="mt-5 text-center text-2xl font-semibold text-ink">Admin sign in</h1>
         {notice ? (
-          <p className="mt-4 text-sm font-medium text-ink" role="status">
+          <p className="mt-4 bg-tint px-3 py-2 text-sm font-medium text-ink" role="status">
             {notice}
           </p>
         ) : null}
         <form action={loginAdmin} className="mt-6 grid gap-4">
+          {errorText ? (
+            <p id="login-error" className="bg-[#fdecea] px-3 py-2 text-sm font-medium text-[#8a1c12]" role="alert">
+              {errorText}
+            </p>
+          ) : null}
           <label className="grid gap-2 text-sm font-medium text-ink">
             Password
             <input
@@ -59,18 +67,17 @@ export default async function AdminLoginPage({
               required
               aria-invalid={errorText ? true : undefined}
               aria-describedby={errorText ? "login-error" : undefined}
-              className="rounded-md border border-line px-3 py-2"
+              className="min-h-[44px] border border-[#6b7380] px-3 py-2"
             />
           </label>
-          {errorText ? (
-            <p id="login-error" className="text-sm font-medium text-clay" role="alert">
-              {errorText}
-            </p>
-          ) : null}
-          <button className="focus-ring rounded-full bg-ink px-5 py-3 text-sm font-semibold text-white hover:bg-clay">
-            Sign In
-          </button>
+          <button className="focus-ring min-h-[44px] w-full bg-blue px-5 text-sm font-semibold text-white hover:bg-blue-deep">Sign in</button>
         </form>
+        <p className="mt-5 text-center text-sm text-ink/75">
+          For the owner of fm-media.org only.{" "}
+          <Link href="/" className="focus-ring inline-flex min-h-[44px] items-center underline">
+            Back to the site
+          </Link>
+        </p>
       </div>
     </main>
   );

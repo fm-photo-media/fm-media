@@ -56,6 +56,11 @@ export function isPublicGalleryImage(url: string, token: string | undefined) {
   return isOwnBlobUrl(url, token);
 }
 
+/** Batch 7: whether /portfolio has anything to show (published rows' URLs in, same rule). */
+export function hasPublicGalleryImage(urls: readonly string[], token: string | undefined) {
+  return urls.some((url) => isPublicGalleryImage(url, token));
+}
+
 /** For /admin: why a row is kept off the public site even if it's marked Published. */
 export function galleryImageNotice(url: string, token: string | undefined) {
   if (isRemovedSample(url)) {

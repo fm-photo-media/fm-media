@@ -465,6 +465,11 @@ function revalidateGalleryPages() {
   revalidatePath("/about");
   revalidatePath("/admin");
   revalidatePath("/admin/gallery");
+  // Batch 7: every public page's nav and footer list Portfolio only while it has a public
+  // photo, so the first publish (or the last unpublish) refreshes the whole public shell,
+  // including the static /privacy and /terms, and the sitemap.
+  revalidatePath("/", "layout");
+  revalidatePath("/sitemap.xml");
 }
 
 function parseGalleryImage(formData: FormData, imageUrl: string, size: ImageSize | null) {

@@ -858,105 +858,36 @@ a[href^="tel:"] {
   }
 }
 
-/* ---------- services tables ---------- */
-.tables {
-  display: grid;
-  grid-template-columns: repeat(12, 1fr);
-  column-gap: 24px;
+/* ---------- services: the price menu leads (batch 7, DES-34) ---------- */
+/* The one price list on /services sits right under the h1, with the side panel
+   ("Not sure which package fits?") under the heading on desktop and beside it on tablets. */
+.prices--lead {
   margin-top: var(--s5);
 }
-.tables__main {
-  grid-column: 1 / 9;
+.prices__foot p + p {
+  margin-top: 12px;
 }
-.tables__side {
-  grid-column: 9 / 13;
+.prices__head .prices__aside {
   display: grid;
   gap: 20px;
   align-content: start;
   justify-items: start;
+  margin-top: 40px;
 }
-.tables__side figure {
+.prices__head .prices__aside figure {
   width: 100%;
-}
-/* a real data table: rules are allowed */
-.ptable {
-  width: 100%;
-  border-collapse: collapse;
-  font-family: var(--font-sans);
-  font-size: 18px;
-  font-variant-numeric: tabular-nums lining-nums;
-}
-.ptable caption {
-  text-align: left;
-  padding-bottom: 12px;
-}
-.ptable thead th {
-  font-weight: 600;
-  font-size: 16px;
-  color: var(--ink-soft);
-  text-align: left;
-  padding: 8px 12px 10px 0;
-  border-bottom: 2px solid var(--ink);
-}
-.ptable tbody th,
-.ptable tbody td {
-  text-align: left;
-  padding: 14px 12px 12px 0;
-  border-bottom: 1px solid var(--rule);
-  font-weight: 400;
-  vertical-align: top;
-}
-.ptable tbody th {
-  font-weight: 600;
-}
-.ptable tbody th .hint {
-  display: block;
-  margin-top: 2px;
-}
-.ptable .num {
-  text-align: right;
-  padding-right: 0;
-  font-weight: 600;
-  white-space: nowrap;
-}
-.tables__pair {
-  margin-top: 56px;
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 48px;
-}
-.tables__note {
-  margin-top: 24px;
-  font-family: var(--font-sans);
-  font-size: 16px;
-}
-.tables__note + .tables__note {
-  margin-top: 12px;
+  margin-top: 0;
+  grid-row: auto;
+  grid-column: auto;
 }
 @media (max-width: 1000px) {
-  .tables__main,
-  .tables__side {
-    grid-column: 1 / -1;
-  }
-  .tables__side {
-    margin-top: 56px;
-    grid-template-columns: 1fr 1fr;
-    align-items: start;
-  }
-  .tables__side figure {
-    grid-row: 1 / 4;
+  .prices__head .prices__aside {
+    margin-top: 0;
   }
 }
 @media (max-width: 640px) {
-  .tables__pair,
-  .tables__side {
-    grid-template-columns: 1fr;
-  }
-  .tables__side figure {
-    grid-row: auto;
-  }
-  .ptable {
-    font-size: 16px;
+  .prices__head .prices__aside {
+    margin-top: 32px;
   }
 }
 
@@ -1485,10 +1416,14 @@ textarea.input {
 }
 
 /* ---------- footer: the business card ---------- */
+/* Batch 7 (design.md "Final whole-site review", change 3): a lighter card, about 480px at
+   1440 and 700px at 390. The logo is capped (160px, 140px on phones) and sits beside the
+   contact lines down to tablets; the lines run in two columns; the send line and "Book a
+   shoot" share one row. The blue bands, the blue bar and "Real Estate Media" stay. */
 .foot {
   background: var(--blue);
   color: #fff;
-  padding: 96px var(--m) 32px;
+  padding: 48px var(--m) 24px;
   margin-top: var(--gap);
 }
 .bizcard {
@@ -1499,37 +1434,39 @@ textarea.input {
   border-top: 14px solid var(--blue-deep);
   border-bottom: 14px solid var(--blue-deep);
   display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 40px 56px;
-  padding: 56px 64px;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 24px 56px;
+  padding: 32px 48px;
   align-items: center;
 }
 .bizcard__brand {
   display: grid;
   justify-items: center;
-  gap: 18px;
+  gap: 8px;
   text-align: center;
 }
 .bizcard__brand img {
-  width: 100%;
-  max-width: 320px;
+  width: 160px;
+  max-width: 100%;
   height: auto;
 }
 .bizcard__tag {
-  font-size: 26px;
+  font-size: 22px;
   font-weight: 500;
 }
 .bizcard__lines {
   border-left: 6px solid var(--blue);
   padding-left: 28px;
   display: grid;
-  gap: 4px;
+  grid-template-columns: repeat(2, minmax(0, max-content));
+  gap: 0 48px;
+  align-items: center;
   justify-items: start;
   font-family: var(--font-sans);
 }
 .bizcard__lines a,
 .bizcard__lines > span {
-  font-size: 22px;
+  font-size: 20px;
   text-decoration: none;
   padding: 6px 0;
   display: inline-block;
@@ -1556,19 +1493,22 @@ textarea.input {
   justify-content: space-between;
   gap: 24px;
   background: var(--tint);
-  margin: 0 -64px -56px;
-  padding: 24px 64px;
+  margin: 0 -48px -32px;
+  padding: 16px 48px;
 }
 .bizcard__send p {
-  font-size: 20px;
-  max-width: 46ch;
+  font-size: 18px;
+  max-width: 52ch;
+}
+.bizcard__send .btn {
+  flex: none;
 }
 .foot__links {
   max-width: 1120px;
-  margin: 40px auto 0;
+  margin: 24px auto 0;
   display: flex;
   flex-wrap: wrap;
-  gap: 8px 28px;
+  gap: 0 28px;
   justify-content: space-between;
   font-family: var(--font-sans);
   font-size: var(--fs-small);
@@ -1587,47 +1527,81 @@ textarea.input {
 }
 @media (max-width: 900px) {
   .bizcard {
-    grid-template-columns: 1fr;
-    padding: 40px 32px;
+    gap: 24px 32px;
+    padding: 28px 32px;
+  }
+  .bizcard__lines {
+    padding-left: 20px;
+    grid-template-columns: minmax(0, 1fr);
   }
   .bizcard__send {
-    margin: 0 -32px -40px;
-    padding: 24px 32px;
-    flex-direction: column;
-    align-items: stretch;
+    margin: 0 -32px -28px;
+    padding: 16px 32px;
   }
 }
 @media (max-width: 640px) {
   .foot {
-    padding-top: 64px;
+    padding-top: 32px;
   }
   .bizcard {
-    padding: 32px 20px;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 16px;
+    padding: 24px 20px;
     border-width: 10px;
   }
-  /* DES-33: the card's logo no longer fills the footer's first phone screen. */
-  .bizcard__brand img {
-    max-width: 200px;
+  /* The logo and "Real Estate Media" side by side, so the card opens in one short row. */
+  .bizcard__brand {
+    grid-template-columns: auto minmax(0, 1fr);
+    align-items: center;
+    justify-items: start;
+    gap: 16px;
+    text-align: left;
   }
+  .bizcard__brand img {
+    width: 140px;
+  }
+  .bizcard__tag {
+    font-size: 20px;
+  }
+  /* The contact lines flow two to a row where they fit (call and text, site and area). */
   .bizcard__lines {
-    padding-left: 16px;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0 16px;
+    padding-left: 14px;
   }
   .bizcard__lines a,
   .bizcard__lines > span {
-    font-size: 19px;
+    font-size: 17px;
+  }
+  .bizcard__lines .bizcard__owner {
+    font-size: 16px;
   }
   .bizcard__send {
-    margin: 0 -20px -32px;
-    padding: 20px;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 12px;
+    margin: 0 -20px -24px;
+    padding: 16px 20px;
+  }
+  .bizcard__send p {
+    font-size: 17px;
   }
   .bizcard__send .btn {
     width: 100%;
   }
   .foot__links {
     flex-direction: column;
+    margin-top: 16px;
   }
   .foot__links ul {
     gap: 0 24px;
+  }
+  /* The copyright line isn't a link, so it doesn't need the 44px target height. */
+  .foot__links li > span {
+    min-height: 0;
+    padding: 4px 0 0;
   }
 }
 

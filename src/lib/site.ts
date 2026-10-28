@@ -15,6 +15,30 @@ export const NAV = [
   { href: "/contact", label: "Book a shoot" }
 ] as const;
 
+export type NavLink = (typeof NAV)[number];
+
+// Batch 7 (design.md "Final whole-site review", change 1): an empty portfolio isn't
+// advertised. While no public photo exists, /portfolio leaves the header, the phone menu,
+// the footer and the sitemap; the route itself stays live for old links. It comes back by
+// itself with the first public photo.
+export function navLinks(hasPortfolio: boolean): readonly NavLink[] {
+  return hasPortfolio ? NAV : NAV.filter((item) => item.href !== "/portfolio");
+}
+
+export function publicPages(hasPortfolio: boolean): readonly string[] {
+  return hasPortfolio ? PUBLIC_PAGES : PUBLIC_PAGES.filter((page) => page !== "/portfolio");
+}
+
+const isLegalPage = (path: string) => path === "/privacy" || path === "/terms";
+
+export function sitemapEntries(hasPortfolio: boolean) {
+  return publicPages(hasPortfolio).map((path) => ({
+    url: `${SITE_URL}${path === "/" ? "" : path}`,
+    changeFrequency: isLegalPage(path) ? ("yearly" as const) : ("monthly" as const),
+    priority: path === "/" ? 1 : isLegalPage(path) ? 0.3 : 0.8
+  }));
+}
+
 /**
  * DES-24 / Legal R4: About shows a portrait only once Francisco sends one. Set this to a
  * local path (for example "/images/francisco.jpg") then; until then there is no slot and

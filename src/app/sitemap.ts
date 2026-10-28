@@ -1,11 +1,12 @@
 import type { MetadataRoute } from "next";
-import { PUBLIC_PAGES, SITE_URL } from "@/lib/site";
+import { hasPublicPortfolio } from "@/lib/data";
+import { sitemapEntries } from "@/lib/site";
 
 // Batch 5 SEO basics: the public pages, /privacy and /terms included (Legal batch 4).
-export default function sitemap(): MetadataRoute.Sitemap {
-  return PUBLIC_PAGES.map((path) => ({
-    url: `${SITE_URL}${path === "/" ? "" : path}`,
-    changeFrequency: path === "/privacy" || path === "/terms" ? "yearly" : "monthly",
-    priority: path === "/" ? 1 : path === "/privacy" || path === "/terms" ? 0.3 : 0.8
-  }));
+// Batch 7: /portfolio is listed only once it has a public photo (site.ts sitemapEntries).
+// Gallery edits revalidate it (actions.ts revalidateGalleryPages); hourly otherwise.
+export const revalidate = 3600;
+
+export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
+  return sitemapEntries(await hasPublicPortfolio());
 }

@@ -29,12 +29,15 @@ export function PriceMenu({
   menu,
   footnote,
   idPrefix = "prices",
-  aside
+  aside,
+  className
 }: {
   menu: Menu;
-  footnote?: string;
+  /** Batch 7: one paragraph per line (Services adds the "every photo package includes" line). */
+  footnote?: string | readonly string[];
   idPrefix?: string;
   aside?: ReactNode;
+  className?: string;
 }) {
   const [packageSlug, setPackageSlug] = useState(menu.packages[0]?.slug ?? "");
   const [extras, setExtras] = useState<string[]>([]);
@@ -54,12 +57,13 @@ export function PriceMenu({
   const smsBody = `Hi Francisco, I'd like to request a shoot: ${parts.join(" + ") || "a shoot"}, ${total.label} on your price list. Address: `;
   const toggle = (slug: string) => setExtras((list) => (list.includes(slug) ? list.filter((value) => value !== slug) : [...list, slug]));
   const headingId = `${idPrefix}-h`;
+  const footnotes = typeof footnote === "string" ? [footnote] : (footnote ?? []);
 
   const offerHint =
     firstShoot && total.pkg && hasDrone && !extras.includes(DRONE_PHOTOS_SLUG) ? "Add drone photos: free on your first shoot" : "";
 
   return (
-    <section className="wrap prices section" id={idPrefix} aria-labelledby={headingId}>
+    <section className={`wrap prices section${className ? ` ${className}` : ""}`} id={idPrefix} aria-labelledby={headingId}>
       <div className="prices__head">
         <div>
           <h2 className="h2" id={headingId}>
@@ -116,7 +120,13 @@ export function PriceMenu({
           ) : null}
         </div>
       </form>
-      {footnote ? <p className="prices__foot">{footnote}</p> : null}
+      {footnotes.length ? (
+        <div className="prices__foot">
+          {footnotes.map((line) => (
+            <p key={line}>{line}</p>
+          ))}
+        </div>
+      ) : null}
       {ready ? (
         <div className="total" aria-live="polite">
           <div className="total__sum">

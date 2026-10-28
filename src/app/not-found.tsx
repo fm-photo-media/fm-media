@@ -4,6 +4,8 @@ import { BrandPanel } from "@/components/photo";
 import { SiteFooter } from "@/components/site-footer";
 import { SiteHeader } from "@/components/site-header";
 import { BUSINESS } from "@/lib/business";
+import { hasPublicPortfolio } from "@/lib/data";
+import { navLinks } from "@/lib/site";
 
 export const metadata: Metadata = {
   title: "Page not found",
@@ -12,10 +14,13 @@ export const metadata: Metadata = {
 
 // Batch 5 (design.md "404"): the root not-found renders outside the (site) group, so it
 // brings the public header and footer itself. The photo slot shows the no-photo panel.
-export default function NotFound() {
+export default async function NotFound() {
+  // Batch 7: the same nav as the (site) layout, so Portfolio is listed only when it has photos.
+  const hasPortfolio = await hasPublicPortfolio();
+  const nav = navLinks(hasPortfolio);
   return (
     <>
-      <SiteHeader />
+      <SiteHeader nav={nav} />
       <main id="main">
         <section className="wrap nf" aria-labelledby="h1">
           <div>
@@ -30,9 +35,11 @@ export default function NotFound() {
               <li>
                 <Link href="/services">Services and pricing</Link>
               </li>
-              <li>
-                <Link href="/portfolio">Portfolio</Link>
-              </li>
+              {hasPortfolio ? (
+                <li>
+                  <Link href="/portfolio">Portfolio</Link>
+                </li>
+              ) : null}
               <li>
                 <Link href="/contact">Book a shoot</Link>
               </li>
@@ -53,7 +60,7 @@ export default function NotFound() {
           <BrandPanel />
         </section>
       </main>
-      <SiteFooter />
+      <SiteFooter nav={nav} />
     </>
   );
 }

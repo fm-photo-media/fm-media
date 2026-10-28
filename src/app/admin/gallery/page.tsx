@@ -57,9 +57,12 @@ export default async function AdminGalleryPage({
             <b>{summary}</b> Only photos from your own shoots go on the public site.
           </p>
         </div>
-        <Link className="ad-btn ad-btn--primary" href="/admin/gallery?upload=1#upload">
-          Upload a photo
-        </Link>
+        {/* Batch 7: hidden while the panel is open, so there's one "Upload a photo" control. */}
+        {uploadOpen ? null : (
+          <Link className="ad-btn ad-btn--primary" href="/admin/gallery?upload=1#upload">
+            Upload a photo
+          </Link>
+        )}
       </div>
 
       <AdminNotice error={notice.error} success={notice.success} />
@@ -118,9 +121,11 @@ export default async function AdminGalleryPage({
                   <tr key={image.id}>
                     <td className="ad-thumbcell">
                       {/* LEG-9: outside links are never loaded; a plain box stands in.
-                          DES-48: the alt text rides on the thumbnail, since the phone row hides its line. */}
+                          Batch 7: alt="" here, because the alt text is already read once per
+                          width: in the "Title and alt text" cell on desktop, and in the phone
+                          cell (visually hidden) on a phone. */}
                       {canRenderGalleryImage(image.imageUrl, token) ? (
-                        <Image src={image.imageUrl} alt={image.alt} width={72} height={48} sizes="72px" className="ad-thumb" />
+                        <Image src={image.imageUrl} alt="" width={72} height={48} sizes="72px" className="ad-thumb" />
                       ) : (
                         <span className="ad-thumb ad-thumb--none">Not shown</span>
                       )}
@@ -130,6 +135,7 @@ export default async function AdminGalleryPage({
                         then Edit and Delete from the actions cell. */}
                     <td className="ad-phone">
                       <b>{image.title}</b>
+                      {image.alt ? <span className="ad-vh">Alt text: {image.alt}</span> : null}
                       <p className="ad-phone__l2">{galleryPhoneLine({ ...image, live })}</p>
                     </td>
                     <td>

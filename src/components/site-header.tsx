@@ -5,7 +5,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useCallback, useEffect, useRef, useState, type KeyboardEvent } from "react";
 import { BUSINESS } from "@/lib/business";
-import { NAV } from "@/lib/site";
+import type { NavLink } from "@/lib/site";
 
 // Batch 5 (design.md "Header", "Menu sheet"; DES-14, QA-11g): the logo on every public page,
 // the nav with one "Book a shoot", the phone as a tel: link, and below 1000px a "Menu"
@@ -16,7 +16,8 @@ function isCurrent(pathname: string, href: string) {
   return href === "/" ? pathname === "/" : pathname === href || pathname.startsWith(`${href}/`);
 }
 
-export function SiteHeader() {
+// Batch 7: `nav` comes from the (site) layout, without Portfolio while it has no photos.
+export function SiteHeader({ nav }: { nav: readonly NavLink[] }) {
   const pathname = usePathname() ?? "/";
   const [open, setOpen] = useState(false);
   const buttonRef = useRef<HTMLButtonElement>(null);
@@ -79,7 +80,7 @@ export function SiteHeader() {
           </Link>
           <nav aria-label="Main">
             <ul className="top__nav">
-              {NAV.map((item) => (
+              {nav.map((item) => (
                 <li key={item.href}>
                   <Link href={item.href} aria-current={current(item.href)}>
                     {item.label}
@@ -127,7 +128,7 @@ export function SiteHeader() {
           <Link href="/" aria-current={current("/")} onClick={close}>
             Home
           </Link>
-          {NAV.map((item) => (
+          {nav.map((item) => (
             <Link key={item.href} href={item.href} aria-current={current(item.href)} onClick={close}>
               {item.label}
             </Link>

@@ -468,7 +468,7 @@ function parseGalleryImage(formData: FormData, imageUrl: string, size: ImageSize
 }
 
 /** QA-27: a refused shoot or town gets its own notice instead of the generic image error. */
-function galleryErrorCode(issues: { path: (string | number)[] }[]) {
+function galleryErrorCode(issues: readonly { path: readonly PropertyKey[] }[]) {
   const fields = new Set(issues.map((issue) => String(issue.path[0])));
   if (fields.size === 1 && fields.has("shoot")) return "invalid-shoot";
   if (fields.size === 1 && fields.has("town")) return "invalid-town";

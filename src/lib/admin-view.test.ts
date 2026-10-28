@@ -8,10 +8,12 @@ import {
   countLabel,
   pagerLabel,
   sqftLabel,
+  galleryPhoneLine,
   gallerySummary,
   receivedLabel,
   requestsLead,
   shootDayLabel,
+  servicePhoneLine,
   servicePreview,
   servicesSummary,
   shootDays,
@@ -218,4 +220,24 @@ test("DES-15: a photo can be saved without alt text, but never published without
   assert.deepEqual(refused.error?.issues.map((issue) => issue.path[0]), ["alt"]);
   assert.equal(galleryImageSchema.safeParse({ ...base, alt: "Short", published: false }).success, false, "too short to be useful");
   assert.equal(galleryImageSchema.safeParse({ ...base, alt: "Front exterior of a home", published: true }).success, true);
+});
+
+// Batch 6 (DES-48 and the services option): a phone row's grey line names the state only
+// when it's the exception, so "Hidden" shows and "Published" doesn't.
+test("galleryPhoneLine joins shoot and town as on the site, then category, then Hidden", () => {
+  assert.equal(
+    galleryPhoneLine({ shoot: "Frame house", town: "Oak Park", category: "Exterior", live: false }),
+    "Frame house, Oak Park · Exterior · Hidden"
+  );
+  assert.equal(galleryPhoneLine({ shoot: "Frame house", town: null, category: "Exterior", live: true }), "Frame house · Exterior");
+  assert.equal(galleryPhoneLine({ shoot: null, town: "Oak Park", category: "Drone", live: true }), "Oak Park · Drone");
+  assert.equal(galleryPhoneLine({ shoot: " ", town: null, category: "Interior", live: false }), "Interior · Hidden");
+});
+
+test("servicePhoneLine shows Hidden, never Published", () => {
+  assert.equal(
+    servicePhoneLine({ squareFeet: "Up to 1,500 sq ft", deliverable: "25 photos", published: true }),
+    "Up to 1,500 sq ft · 25 photos"
+  );
+  assert.equal(servicePhoneLine({ squareFeet: null, deliverable: "25 photos", published: false }), "25 photos · Hidden");
 });

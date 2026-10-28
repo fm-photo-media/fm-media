@@ -6,7 +6,7 @@ import { createService, deleteService, updateService } from "@/app/actions";
 import { AdminNotice, Checkbox, ConfirmDelete, SelectField, TextArea, TextInput } from "@/app/admin/admin-fields";
 import { AdminShell } from "@/app/admin/admin-shell";
 import { isAdminAuthenticated } from "@/lib/admin-auth";
-import { countLabel, servicePreview, servicesSummary } from "@/lib/admin-view";
+import { countLabel, servicePhoneLine, servicePreview, servicesSummary } from "@/lib/admin-view";
 import { displayPrice } from "@/lib/price-menu";
 import { prisma } from "@/lib/prisma";
 import { serviceGroups } from "@/lib/services";
@@ -274,7 +274,7 @@ export default async function AdminServicesPage({
                         </span>
                       </div>
                       <p className="ad-phone__l2">
-                        {[service.squareFeet, service.deliverable, service.published ? "Published" : "Hidden"].filter(Boolean).join(" · ")}
+                        {servicePhoneLine(service)}
                       </p>
                     </td>
                   </tr>,

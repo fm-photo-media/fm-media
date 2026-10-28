@@ -504,25 +504,25 @@ input[type="file"].ad-input::file-selector-button {
   color: var(--muted);
   font-size: 13px;
 }
-.ad-upload > summary {
-  list-style: none;
-  cursor: pointer;
-  min-height: var(--target);
+/* DES-49: the upload panel exists only while open; its head carries a Close link. */
+.ad-upload__head {
+  flex-wrap: nowrap;
+  align-items: flex-start;
   padding-bottom: 16px;
 }
-.ad-upload > summary::-webkit-details-marker {
-  display: none;
-}
-.ad-upload > summary::after {
-  content: "Open";
+.ad-upload__close {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  min-height: var(--target);
+  margin: -10px -8px 0 0;
+  padding: 0 8px;
   color: var(--accent-deep);
   font-weight: 500;
   font-size: 14px;
+  text-decoration: none;
 }
-.ad-upload[open] > summary::after {
-  content: "Close";
-}
-.ad-upload > summary:hover h2 {
+.ad-upload__close:hover {
   text-decoration: underline;
   text-underline-offset: 3px;
 }
@@ -1275,6 +1275,31 @@ input[type="file"].ad-input::file-selector-button {
     content: attr(data-l) " ";
     color: var(--muted);
     font-size: 12px;
+  }
+  /* DES-48: a photo is the 72px thumbnail beside two lines (title; one grey line), with
+     Edit and Delete under them. About 110px a photo. */
+  .ad-rows--gallery tr {
+    display: grid;
+    grid-template-columns: 72px minmax(0, 1fr);
+    column-gap: 12px;
+    align-items: start;
+  }
+  .ad-rows--gallery tr > td:not(.ad-thumbcell):not(.ad-phone):not(.ad-num) {
+    display: none;
+  }
+  .ad-rows--gallery td.ad-thumbcell {
+    grid-column: 1;
+    grid-row: 1 / span 2;
+  }
+  .ad-rows--gallery td.ad-phone {
+    display: block;
+    grid-column: 2;
+    font-size: 14px;
+    line-height: 20px;
+  }
+  .ad-rows--gallery td.ad-num {
+    grid-column: 2;
+    margin-top: -6px;
   }
   .ad-title .ad-btn--primary {
     width: 100%;

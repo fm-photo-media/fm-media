@@ -1,7 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState, useTransition, type FormEvent } from "react";
-import { useFormState } from "react-dom";
+import { useActionState, useEffect, useRef, useState, useTransition, type FormEvent } from "react";
 import Link from "next/link";
 import { createInquiry, type FormState } from "@/app/actions";
 import { BOOKING_LIMITS, NO_PACKAGE_VALUE } from "@/lib/booking-limits";
@@ -115,7 +114,7 @@ function MessageWithPhone({ message }: { message: string }) {
 }
 
 export function ContactForm({ options }: { options: BookingOptions }) {
-  const [state, formAction] = useFormState(createInquiry, initialState);
+  const [state, formAction] = useActionState(createInquiry, initialState);
   const [isPending, startTransition] = useTransition();
   const formRef = useRef<HTMLFormElement>(null);
   const noticeRef = useRef<HTMLDivElement>(null);

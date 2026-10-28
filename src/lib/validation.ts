@@ -26,7 +26,8 @@ const line = (max: number, tooLong?: string) =>
   z.preprocess((value) => (typeof value === "string" ? singleLine(value) : value), text(max, tooLong));
 
 // Multi-select values arrive comma-joined (slugs never contain commas). This keeps
-// collections out of zod 3 (see SEC-9) and caps how many values are looked at.
+// collections out of the schema (SEC-9; zod 4.6.6+ fixes the advisory itself, batch 6)
+// and caps how many values are looked at.
 function slugList(value: string) {
   return value
     .split(",")
@@ -47,7 +48,7 @@ export function makeInquirySchema({ options, now = () => new Date() }: { options
   return z
     .object({
       name: line(BOOKING_LIMITS.name).pipe(z.string().min(2, "Enter your name.")),
-      email: line(BOOKING_LIMITS.email).pipe(z.string().email("Enter a valid email.")),
+      email: line(BOOKING_LIMITS.email).pipe(z.email("Enter a valid email.")),
       phone: line(BOOKING_LIMITS.phone, "Enter a phone number under 30 characters.").refine(
         (value) => value.replace(/\D/g, "").length >= 10,
         "Enter a complete phone number."
@@ -76,12 +77,12 @@ export function makeInquirySchema({ options, now = () => new Date() }: { options
         .optional()
         .default("")
         .refine((value) => !value || isValidTimeInput(value), "Choose a time like 09:30, or leave it blank."),
-      preferredWindow: z.enum(TIME_WINDOWS, { message: "Choose a time window." }).optional().default("Flexible"),
+      preferredWindow: z.enum(TIME_WINDOWS, { error: "Choose a time window." }).optional().default("Flexible"),
       // DES-25 (batch 5a round 1): optional. The length cap stays; line breaks are kept.
       message: text(BOOKING_LIMITS.message).optional().default("")
     })
     .superRefine((value, ctx) => {
-      const issue = (path: string, message: string) => ctx.addIssue({ code: z.ZodIssueCode.custom, path: [path], message });
+      const issue = (path: string, message: string) => ctx.addIssue({ code: "custom", path: [path], message });
 
       if (value.photoPackage && !lookup(options.photoPackages, value.photoPackage)) issue("photoPackage", STALE_OPTION);
       if (slugList(value.addOns).some((slug) => !lookup(options.addOns, slug))) issue("addOns", STALE_OPTION);
@@ -193,6 +194,6 @@ export const galleryImageSchema = z
   })
   .superRefine((value, ctx) => {
     if (value.published && value.alt === "") {
-      ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["alt"], message: ALT_TEXT_MESSAGE });
+      ctx.addIssue({ code: "custom", path: ["alt"], message: ALT_TEXT_MESSAGE });
     }
   });

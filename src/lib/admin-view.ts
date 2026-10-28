@@ -2,6 +2,7 @@
 // Pure functions, tested in admin-view.test.ts. Every count comes from real rows.
 
 import { BOOKING_TIME_ZONE, chicagoToday } from "./booking-time";
+import { shootCaption } from "./portfolio";
 import { displayPrice } from "./price-menu";
 
 export function countLabel(n: number, noun: string, plural = `${noun}s`) {
@@ -111,6 +112,35 @@ export function galleryCategories(inUse: string[]) {
 export function gallerySummary({ total, onSite, featured }: { total: number; onSite: number; featured: number }) {
   if (total === 0) return "No photos yet. Upload one from your own shoots.";
   return `${countLabel(total, "photo")}, ${onSite} on the site, ${featured} featured on the home page.`;
+}
+
+// Batch 6 (DES-48, and the services option from the 5b re-check): the grey second line of a
+// phone row. The state is printed only when it's the exception, so "Hidden" shows and
+// "Published" doesn't (app-screens 13: grey for what's fine, a mark only on what isn't).
+export function galleryPhoneLine({
+  shoot,
+  town,
+  category,
+  live
+}: {
+  shoot: string | null;
+  town: string | null;
+  category: string;
+  live: boolean;
+}) {
+  return [shootCaption(shoot, town), category, live ? null : "Hidden"].filter(Boolean).join(" · ");
+}
+
+export function servicePhoneLine({
+  squareFeet,
+  deliverable,
+  published
+}: {
+  squareFeet: string | null;
+  deliverable: string;
+  published: boolean;
+}) {
+  return [squareFeet, deliverable, published ? null : "Hidden"].filter(Boolean).join(" · ");
 }
 
 export function servicesSummary({ total, published }: { total: number; published: number }) {

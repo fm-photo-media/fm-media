@@ -7,7 +7,7 @@ import { AdminNotice, ConfirmDelete } from "@/app/admin/admin-fields";
 import { AdminShell } from "@/app/admin/admin-shell";
 import { GalleryImageForm } from "@/app/admin/gallery/gallery-image-form";
 import { isAdminAuthenticated } from "@/lib/admin-auth";
-import { countLabel, galleryCategories, gallerySummary } from "@/lib/admin-view";
+import { countLabel, galleryCategories, galleryPhoneLine, gallerySummary } from "@/lib/admin-view";
 import { canRenderGalleryImage, galleryImageNotice, isPublicGalleryImage } from "@/lib/gallery-visibility";
 import { prisma } from "@/lib/prisma";
 
@@ -32,6 +32,7 @@ export default async function AdminGalleryPage({
   }
 
   const notice = await searchParams;
+  const uploadOpen = notice.upload === "1" || Boolean(notice.error);
   const token = process.env.BLOB_READ_WRITE_TOKEN;
   const [total, images, used] = await Promise.all([
     prisma.galleryImage.count(),
@@ -63,22 +64,30 @@ export default async function AdminGalleryPage({
 
       <AdminNotice error={notice.error} success={notice.success} />
 
-      {/* DES-41: closed by default so the list leads; opened by ?upload=1 (the header button),
-          the summary, or any upload error, so a refused upload shows its form again. */}
-      <details className="ad-panel ad-upload" id="upload" open={notice.upload === "1" || Boolean(notice.error)}>
-        <summary className="ad-panel__head ad-upload__head">
-          <h2 id="upload-heading">Upload a photo</h2>
-          <p>One photo at a time. The size is read from the file.</p>
-        </summary>
-        <GalleryImageForm
-          action={createGalleryImage}
-          fileLabel="Photo file"
-          submitLabel="Upload"
-          formLabel="Upload a photo"
-          categories={categories}
-          requireFile
-        />
-      </details>
+      {/* DES-41 / DES-49: the panel is rendered only when it's open, so the list leads and the
+          header button is the one "Upload a photo" control. It opens with ?upload=1 (the header
+          button) or on any upload error, so a refused upload shows its form again. */}
+      {uploadOpen ? (
+        <section className="ad-panel ad-upload" id="upload" aria-labelledby="upload-heading">
+          <div className="ad-panel__head ad-upload__head">
+            <div>
+              <h2 id="upload-heading">Upload a photo</h2>
+              <p>One photo at a time. The size is read from the file.</p>
+            </div>
+            <Link className="ad-upload__close" href="/admin/gallery" aria-label="Close the upload panel">
+              Close
+            </Link>
+          </div>
+          <GalleryImageForm
+            action={createGalleryImage}
+            fileLabel="Photo file"
+            submitLabel="Upload"
+            formLabel="Upload a photo"
+            categories={categories}
+            requireFile
+          />
+        </section>
+      ) : null}
 
       <section className="ad-panel" aria-labelledby="all-heading">
         <div className="ad-panel__head">
@@ -88,7 +97,7 @@ export default async function AdminGalleryPage({
         {images.length === 0 ? (
           <p className="ad-empty">No photos yet. Upload one from your own shoots above.</p>
         ) : (
-          <table className="ad-rows ad-rows--list">
+          <table className="ad-rows ad-rows--list ad-rows--gallery">
             <thead>
               <tr>
                 <th scope="col">Photo</th>
@@ -107,13 +116,21 @@ export default async function AdminGalleryPage({
                 const live = image.published && !hiddenWhy;
                 return (
                   <tr key={image.id}>
-                    <td>
-                      {/* LEG-9: outside links are never loaded; a plain box stands in. */}
+                    <td className="ad-thumbcell">
+                      {/* LEG-9: outside links are never loaded; a plain box stands in.
+                          DES-48: the alt text rides on the thumbnail, since the phone row hides its line. */}
                       {canRenderGalleryImage(image.imageUrl, token) ? (
-                        <Image src={image.imageUrl} alt="" width={72} height={48} sizes="72px" className="ad-thumb" />
+                        <Image src={image.imageUrl} alt={image.alt} width={72} height={48} sizes="72px" className="ad-thumb" />
                       ) : (
                         <span className="ad-thumb ad-thumb--none">Not shown</span>
                       )}
+                    </td>
+                    {/* DES-48: the phone layout (<=640px): the thumbnail beside the title, one grey
+                        line (shoot and town as on the site, category, and Hidden only when hidden),
+                        then Edit and Delete from the actions cell. */}
+                    <td className="ad-phone">
+                      <b>{image.title}</b>
+                      <p className="ad-phone__l2">{galleryPhoneLine({ ...image, live })}</p>
                     </td>
                     <td>
                       <b>{image.title}</b>

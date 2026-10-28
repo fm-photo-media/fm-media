@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { BOOKING_LIMITS, NO_PACKAGE_VALUE } from "@/lib/booking-limits";
 import { TIME_WINDOWS, checkBookingSlot, isValidTimeInput, storedDateFromInput, windowForTime } from "@/lib/booking-time";
-import { CAPTION_MESSAGES, isSafeShootName, isSafeTownName } from "@/lib/captions";
+import { ALT_TEXT_MESSAGE, CAPTION_MESSAGES, isSafeShootName, isSafeTownName } from "@/lib/captions";
 import { singleLine } from "@/lib/text";
 import { isAllowedGalleryImageUrl } from "@/lib/upload";
 
@@ -148,7 +148,7 @@ export const serviceSchema = z.object({
   published: z.coerce.boolean().optional().default(false)
 });
 
-export { CAPTION_MESSAGES };
+export { ALT_TEXT_MESSAGE, CAPTION_MESSAGES };
 
 /** An optional single-line caption field: blank or missing becomes null. */
 function optionalCaption(max: number, allowed: (value: string) => boolean, message: string) {
@@ -158,9 +158,17 @@ function optionalCaption(max: number, allowed: (value: string) => boolean, messa
   );
 }
 
-export const galleryImageSchema = z.object({
+export const galleryImageSchema = z
+  .object({
   title: z.string().trim().min(2).max(160),
-  alt: z.string().trim().min(8).max(400),
+  // DES-15 (batch 5b): alt text may be blank on a hidden photo; when given it must say
+  // something (8+ characters), and a published photo always needs it (superRefine below).
+  alt: z
+    .string()
+    .trim()
+    .max(400)
+    .refine((value) => value === "" || value.length >= 8, ALT_TEXT_MESSAGE)
+    .default(""),
   category: z.string().trim().min(2).max(60),
   // LEG-9: only our own Blob uploads or local /images files. Stock-photo and other
   // outside links are refused, so they can't appear as portfolio work.
@@ -177,8 +185,14 @@ export const galleryImageSchema = z.object({
   // Legal R2 / QA-27 (round 1): no digit of any script anywhere, and no leading "#".
   shoot: optionalCaption(80, isSafeShootName, CAPTION_MESSAGES.shoot),
   town: optionalCaption(60, isSafeTownName, CAPTION_MESSAGES.town),
-  width: z.coerce.number().int().min(320).default(1600),
-  height: z.coerce.number().int().min(240).default(1100),
+  // Batch 5b: read from the file itself (upload.ts imageDimensions), never typed in.
+  width: z.coerce.number().int().min(320).max(20000).default(1600),
+  height: z.coerce.number().int().min(240).max(20000).default(1100),
   featured: z.coerce.boolean().optional().default(false),
   published: z.coerce.boolean().optional().default(false)
-});
+  })
+  .superRefine((value, ctx) => {
+    if (value.published && value.alt === "") {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["alt"], message: ALT_TEXT_MESSAGE });
+    }
+  });

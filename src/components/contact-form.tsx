@@ -88,6 +88,32 @@ function CallOrText() {
   );
 }
 
+/**
+ * QA-34: some server messages end with the phone number. It's the moment the customer most
+ * needs to call, so the number itself becomes the tel: link (said once), with a text link
+ * on touch screens only.
+ */
+function MessageWithPhone({ message }: { message: string }) {
+  const at = message.indexOf(PHONE_DISPLAY);
+  if (at < 0) return <>{message}</>;
+  return (
+    <>
+      {message.slice(0, at)}
+      <a href={"tel:" + PHONE_E164} className="fact">
+        {PHONE_DISPLAY}
+      </a>
+      {message.slice(at + PHONE_DISPLAY.length)}
+      <span className="touch-only">
+        {" "}
+        <a href={"sms:" + PHONE_E164} className="fact">
+          Send a text
+        </a>
+        .
+      </span>
+    </>
+  );
+}
+
 export function ContactForm({ options }: { options: BookingOptions }) {
   const [state, formAction] = useFormState(createInquiry, initialState);
   const [isPending, startTransition] = useTransition();
@@ -204,7 +230,9 @@ export function ContactForm({ options }: { options: BookingOptions }) {
         ) : null}
         {state.status === "saved-email-failed" ? (
           <div className="notice notice--warn">
-            <b>{state.message}</b>
+            <b>
+              <MessageWithPhone message={state.message} />
+            </b>
             {/* QA-30: the server message already gives the phone; add the links only if it doesn't. */}
             {state.message.includes(PHONE_DISPLAY) ? null : (
               <>
@@ -216,7 +244,9 @@ export function ContactForm({ options }: { options: BookingOptions }) {
         ) : null}
         {state.status === "error" ? (
           <div className="notice notice--error">
-            <b>{state.message}</b> {summary.length ? "Your answers are kept." : null}{" "}
+            <b>
+              <MessageWithPhone message={state.message} />
+            </b> {summary.length ? "Your answers are kept." : null}{" "}
             {/* QA-28: some server messages already end with the phone number; say it once. */}
             {state.message.includes(PHONE_DISPLAY) ? null : (
               <>

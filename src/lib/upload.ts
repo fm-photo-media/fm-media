@@ -43,6 +43,119 @@ export function detectImageType(bytes: Uint8Array): AllowedImageType | null {
   return null;
 }
 
+// ---------------------------------------------------------------------------
+// Batch 5b (design.md note 7): the pixel size is read from the file, not typed in.
+// ---------------------------------------------------------------------------
+
+export type ImageSize = { width: number; height: number };
+
+const u16be = (b: Uint8Array, i: number) => (b[i] << 8) | b[i + 1];
+const u16le = (b: Uint8Array, i: number) => b[i] | (b[i + 1] << 8);
+const u24le = (b: Uint8Array, i: number) => b[i] | (b[i + 1] << 8) | (b[i + 2] << 16);
+const u32be = (b: Uint8Array, i: number) => ((b[i] << 24) >>> 0) + ((b[i + 1] << 16) | (b[i + 2] << 8) | b[i + 3]);
+
+/** EXIF orientation (1-8) from an APP1 segment's payload, or 1. */
+function exifOrientation(b: Uint8Array, start: number, end: number) {
+  if (!startsWith(b, start, ascii("Exif")) || b[start + 4] !== 0 || b[start + 5] !== 0) return 1;
+  const tiff = start + 6;
+  if (tiff + 8 > end) return 1;
+  const little = b[tiff] === 0x49 && b[tiff + 1] === 0x49;
+  if (!little && !(b[tiff] === 0x4d && b[tiff + 1] === 0x4d)) return 1;
+  const r16 = (i: number) => (little ? u16le(b, i) : u16be(b, i));
+  const r32 = (i: number) => (little ? (u16le(b, i) | (u16le(b, i + 2) << 16)) >>> 0 : u32be(b, i));
+  const ifd = tiff + r32(tiff + 4);
+  if (ifd + 2 > end) return 1;
+  const entries = r16(ifd);
+  for (let n = 0; n < entries; n++) {
+    const entry = ifd + 2 + n * 12;
+    if (entry + 12 > end) return 1;
+    if (r16(entry) === 0x0112) {
+      const value = r16(entry + 8);
+      return value >= 1 && value <= 8 ? value : 1;
+    }
+  }
+  return 1;
+}
+
+function jpegSize(b: Uint8Array): ImageSize | null {
+  let i = 2;
+  let orientation = 1;
+  while (i + 4 <= b.length) {
+    if (b[i] !== 0xff) return null;
+    const marker = b[i + 1];
+    if (marker === 0xff) {
+      i += 1;
+      continue;
+    }
+    if (marker === 0xd8 || marker === 0x01 || (marker >= 0xd0 && marker <= 0xd7)) {
+      i += 2;
+      continue;
+    }
+    const length = u16be(b, i + 2);
+    if (length < 2) return null;
+    const body = i + 4;
+    if (marker === 0xe1) orientation = exifOrientation(b, body, Math.min(b.length, i + 2 + length));
+    // SOF0-SOF15, except DHT (C4), JPG (C8) and DAC (CC).
+    if (marker >= 0xc0 && marker <= 0xcf && marker !== 0xc4 && marker !== 0xc8 && marker !== 0xcc) {
+      if (body + 5 > b.length) return null;
+      const height = u16be(b, body + 1);
+      const width = u16be(b, body + 3);
+      if (!width || !height) return null;
+      // Orientations 5-8 turn the picture by 90 degrees, so it shows upright as height x width.
+      return orientation >= 5 ? { width: height, height: width } : { width, height };
+    }
+    if (marker === 0xd9 || marker === 0xda) return null;
+    i += 2 + length;
+  }
+  return null;
+}
+
+function webpSize(b: Uint8Array): ImageSize | null {
+  if (b.length < 30) return null;
+  if (startsWith(b, 12, ascii("VP8 "))) {
+    return { width: u16le(b, 26) & 0x3fff, height: u16le(b, 28) & 0x3fff };
+  }
+  if (startsWith(b, 12, ascii("VP8L"))) {
+    const bits = (b[21] | (b[22] << 8) | (b[23] << 16) | (b[24] << 24)) >>> 0;
+    return { width: (bits & 0x3fff) + 1, height: ((bits >>> 14) & 0x3fff) + 1 };
+  }
+  if (startsWith(b, 12, ascii("VP8X"))) {
+    return { width: u24le(b, 24) + 1, height: u24le(b, 27) + 1 };
+  }
+  return null;
+}
+
+function avifSize(b: Uint8Array): ImageSize | null {
+  const ispe = ascii("ispe");
+  const limit = Math.min(b.length - 15, 64 * 1024);
+  for (let i = 4; i < limit; i++) {
+    if (startsWith(b, i, ispe)) {
+      const width = u32be(b, i + 8);
+      const height = u32be(b, i + 12);
+      return width && height ? { width, height } : null;
+    }
+  }
+  return null;
+}
+
+/** The upright pixel size of an allowed image from its bytes, or null if it can't be read. */
+export function imageDimensions(bytes: Uint8Array): ImageSize | null {
+  const type = detectImageType(bytes);
+  const size =
+    type === "image/jpeg"
+      ? jpegSize(bytes)
+      : type === "image/png"
+        ? bytes.length >= 24 && startsWith(bytes, 12, ascii("IHDR"))
+          ? { width: u32be(bytes, 16), height: u32be(bytes, 20) }
+          : null
+        : type === "image/webp"
+          ? webpSize(bytes)
+          : type === "image/avif"
+            ? avifSize(bytes)
+            : null;
+  return size && size.width > 0 && size.height > 0 ? size : null;
+}
+
 function randomHex(bytes: number) {
   const values = globalThis.crypto.getRandomValues(new Uint8Array(bytes));
   return Array.from(values, (v) => v.toString(16).padStart(2, "0")).join("");

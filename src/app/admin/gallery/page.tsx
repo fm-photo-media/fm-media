@@ -3,151 +3,163 @@ import Image from "next/image";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { createGalleryImage, deleteGalleryImage } from "@/app/actions";
-import { AdminNotice } from "@/app/admin/admin-fields";
+import { AdminNotice, ConfirmDelete } from "@/app/admin/admin-fields";
+import { AdminShell } from "@/app/admin/admin-shell";
 import { GalleryImageForm } from "@/app/admin/gallery/gallery-image-form";
-import { AdminHeading } from "@/app/admin/admin-heading";
 import { isAdminAuthenticated } from "@/lib/admin-auth";
-import { canRenderGalleryImage, galleryImageNotice } from "@/lib/gallery-visibility";
-import { AdminHeader } from "@/app/admin/admin-header";
+import { countLabel, galleryCategories, gallerySummary } from "@/lib/admin-view";
+import { canRenderGalleryImage, galleryImageNotice, isPublicGalleryImage } from "@/lib/gallery-visibility";
 import { prisma } from "@/lib/prisma";
 
 export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
-  title: "Admin Gallery",
+  title: "Gallery",
   robots: { index: false, follow: false }
 };
 
-export default async function AdminGalleryPage({ searchParams }: { searchParams: Promise<{ error?: string; success?: string }> }) {
+// Batch 5b (design.md "Gallery", note 7): h1 plus a computed subline, the upload panel, and
+// every photo with a 72px 3:2 thumbnail (our own store only, LEG-9), its title and alt text,
+// shoot and town, category, whether it's on the site (and why not), Edit and an inline delete.
+
+export default async function AdminGalleryPage({
+  searchParams
+}: {
+  searchParams: Promise<{ error?: string; success?: string; upload?: string }>;
+}) {
   if (!(await isAdminAuthenticated())) {
     redirect("/admin/login");
   }
 
   const notice = await searchParams;
-  const images = await prisma.galleryImage.findMany({
-    orderBy: { updatedAt: "desc" },
-    take: 50,
-    select: {
-      id: true,
-      title: true,
-      alt: true,
-      category: true,
-      shoot: true,
-      town: true,
-      imageUrl: true,
-      featured: true,
-      published: true
-    }
-  });
+  const token = process.env.BLOB_READ_WRITE_TOKEN;
+  const [total, images, used] = await Promise.all([
+    prisma.galleryImage.count(),
+    prisma.galleryImage.findMany({
+      orderBy: { updatedAt: "desc" },
+      take: 50,
+      select: { id: true, title: true, alt: true, category: true, shoot: true, town: true, imageUrl: true, featured: true, published: true }
+    }),
+    prisma.galleryImage.findMany({ distinct: ["category"], select: { category: true } })
+  ]);
+  const categories = galleryCategories(used.map((row) => row.category));
+  const all = total <= images.length ? images : await prisma.galleryImage.findMany({ select: { imageUrl: true, featured: true, published: true } });
+  const onSite = all.filter((image) => image.published && isPublicGalleryImage(image.imageUrl, token));
+  const summary = gallerySummary({ total, onSite: onSite.length, featured: onSite.filter((image) => image.featured).length });
 
   return (
-    <>
-      <AdminHeader current="gallery" />
-    <main className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
-      <Link href="/admin" className="focus-ring inline-flex min-h-[44px] items-center text-sm font-semibold text-clay hover:text-ink">
-        Back to Admin
-      </Link>
-      <AdminHeading title="Manage gallery images." copy="Upload photos from your own shoots, update labels, and choose featured portfolio images. Only your own uploads show on the public site." />
+    <AdminShell current="gallery" crumb={<b>Gallery</b>}>
+      <div className="ad-title">
+        <div>
+          <h1>Gallery</h1>
+          <p className="tnum">
+            <b>{summary}</b> Only photos from your own shoots go on the public site.
+          </p>
+        </div>
+        <Link className="ad-btn ad-btn--primary" href="/admin/gallery?upload=1#upload">
+          Upload a photo
+        </Link>
+      </div>
+
       <AdminNotice error={notice.error} success={notice.success} />
 
-      <section className="mt-10 rounded-lg border border-line bg-white p-5">
-        <h2 className="font-serif text-2xl">Add Gallery Image</h2>
-        <GalleryImageForm action={createGalleryImage} fileLabel="Choose Image File" submitLabel="Add Image" requireFile />
-      </section>
+      {/* DES-41: closed by default so the list leads; opened by ?upload=1 (the header button),
+          the summary, or any upload error, so a refused upload shows its form again. */}
+      <details className="ad-panel ad-upload" id="upload" open={notice.upload === "1" || Boolean(notice.error)}>
+        <summary className="ad-panel__head ad-upload__head">
+          <h2 id="upload-heading">Upload a photo</h2>
+          <p>One photo at a time. The size is read from the file.</p>
+        </summary>
+        <GalleryImageForm
+          action={createGalleryImage}
+          fileLabel="Photo file"
+          submitLabel="Upload"
+          formLabel="Upload a photo"
+          categories={categories}
+          requireFile
+        />
+      </details>
 
-      <section className="mt-12">
-        <h2 className="font-serif text-3xl">Gallery Images</h2>
-        <div className="mt-5 overflow-x-auto rounded-lg border border-line bg-white">
-          <table className="w-full min-w-[780px] text-left text-sm">
-            <thead className="bg-mist text-ink">
+      <section className="ad-panel" aria-labelledby="all-heading">
+        <div className="ad-panel__head">
+          <h2 id="all-heading">All photos</h2>
+          <p className="tnum">{total > images.length ? `The ${images.length} most recently changed of ${total}` : `${countLabel(total, "photo")}, most recently changed first`}</p>
+        </div>
+        {images.length === 0 ? (
+          <p className="ad-empty">No photos yet. Upload one from your own shoots above.</p>
+        ) : (
+          <table className="ad-rows ad-rows--list">
+            <thead>
               <tr>
-                <th className="px-4 py-3">
-                  <span className="sr-only">Preview</span>
+                <th scope="col">Photo</th>
+                <th scope="col">Title and alt text</th>
+                <th scope="col">Shoot</th>
+                <th scope="col">Category</th>
+                <th scope="col">On the site</th>
+                <th scope="col" className="ad-num">
+                  <span className="ad-vh">Actions</span>
                 </th>
-                <th className="px-4 py-3">Title, shoot and town</th>
-                <th className="px-4 py-3">Category</th>
-                <th className="px-4 py-3">Status</th>
-                <th className="px-4 py-3">Edit</th>
-                <th className="px-4 py-3">Delete</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-line">{/* taste-skill-ignore: rows of a real data table */}
-              {images.map((image) => (
-                <tr key={image.id}>
-                  <td className="px-4 py-3">
-                    {/* Research (admin): a thumbnail, so the owner can check what is published. */}
-                    {/* LEG-9: outside links are never loaded; a plain box stands in. */}
-                    {canRenderGalleryImage(image.imageUrl, process.env.BLOB_READ_WRITE_TOKEN) ? (
-                      <Image
-                        src={image.imageUrl}
-                        alt={image.alt}
-                        width={96}
-                        height={64}
-                        sizes="96px"
-                        className="h-16 w-24 rounded border border-line bg-mist object-cover"
-                      />
-                    ) : (
-                      <span className="flex h-16 w-24 items-center justify-center rounded border border-line bg-mist text-xs text-ink/70">
-                        Not shown
-                      </span>
-                    )}
-                  </td>
-                  <td className="px-4 py-3 font-medium text-ink">
-                    {image.title}
-                    {image.shoot || image.town ? (
-                      <span className="mt-1 block text-sm font-normal text-ink/75">{[image.shoot, image.town].filter(Boolean).join(", ")}</span>
-                    ) : null}
-                  </td>
-                  <td className="px-4 py-3 text-ink/70">{image.category}</td>
-                  <td className="px-4 py-3 text-ink/70">
-                    {image.published ? "Published" : "Hidden"}
-                    {image.featured ? " / Featured" : ""}
-                    {galleryImageNotice(image.imageUrl, process.env.BLOB_READ_WRITE_TOKEN) ? (
-                      <span className="mt-1 block max-w-xs text-xs leading-5 text-ink/70">{galleryImageNotice(image.imageUrl, process.env.BLOB_READ_WRITE_TOKEN)}</span>
-                    ) : null}
-                  </td>
-                  <td className="px-4 py-3">
-                    <Link
-                      href={`/admin/gallery/${image.id}`}
-                      aria-label={`Edit ${image.title}`}
-                      className="focus-ring inline-flex min-h-[44px] items-center text-sm font-semibold text-clay hover:text-ink"
-                    >
-                      Edit
-                    </Link>
-                  </td>
-                  <td className="px-4 py-3">
-                    <form action={deleteGalleryImage} className="flex items-center gap-3">
-                      <input type="hidden" name="id" value={image.id} />
-                      <input type="hidden" name="returnTo" value="/admin/gallery" />
-                      <label className="flex min-h-[44px] items-center gap-2 text-sm font-medium text-ink/80">
-                        <input
-                          name="confirmDelete"
-                          type="checkbox"
-                          required
-                          aria-label={`Confirm deleting ${image.title}`}
-                          className="h-6 w-6 accent-clay"
-                        />
-                        Confirm
-                      </label>
-                      <button aria-label={`Delete ${image.title}`} className="focus-ring min-h-[44px] px-2 text-sm font-semibold text-clay">
-                        Delete
-                      </button>
-                    </form>
-                  </td>
-                </tr>
-              ))}
-              {images.length === 0 ? (
-                <tr>
-                  <td className="px-4 py-6 text-ink/60" colSpan={6}>
-                    No gallery images yet.
-                  </td>
-                </tr>
-              ) : null}
+            <tbody>
+              {images.map((image) => {
+                const hiddenWhy = galleryImageNotice(image.imageUrl, token);
+                const live = image.published && !hiddenWhy;
+                return (
+                  <tr key={image.id}>
+                    <td>
+                      {/* LEG-9: outside links are never loaded; a plain box stands in. */}
+                      {canRenderGalleryImage(image.imageUrl, token) ? (
+                        <Image src={image.imageUrl} alt="" width={72} height={48} sizes="72px" className="ad-thumb" />
+                      ) : (
+                        <span className="ad-thumb ad-thumb--none">Not shown</span>
+                      )}
+                    </td>
+                    <td>
+                      <b>{image.title}</b>
+                      <span className="ad-sub">{image.alt || <span className="ad-dash">No alt text yet</span>}</span>
+                    </td>
+                    <td data-l="Shoot">
+                      {image.shoot || image.town ? (
+                        <>
+                          {image.shoot || <span className="ad-dash">—</span>}
+                          {image.town ? <span className="ad-sub">{image.town}</span> : null}
+                        </>
+                      ) : (
+                        <span className="ad-dash">—</span>
+                      )}
+                    </td>
+                    <td data-l="Category">{image.category}</td>
+                    <td>
+                      {live ? <span className="ad-tag ad-tag--pos">Published</span> : <span className="ad-tag ad-tag--off">Hidden</span>}
+                      {live && image.featured ? <span className="ad-sub">Featured on home</span> : null}
+                      {hiddenWhy ? <span className="ad-sub">{hiddenWhy}</span> : null}
+                    </td>
+                    <td className="ad-num">
+                      <div className="ad-actions">
+                        <Link className="ad-btn ad-btn--text" href={`/admin/gallery/${image.id}`} aria-label={`Edit ${image.title}`}>
+                          Edit
+                        </Link>
+                        <ConfirmDelete
+                          summary="Delete"
+                          summaryLabel={`Delete ${image.title}`}
+                          question={`Delete “${image.title}” and its file? This can't be undone.`}
+                          action={deleteGalleryImage}
+                          confirmLabel="Delete photo"
+                          confirmAriaLabel={`Yes, delete ${image.title} and its file`}
+                        >
+                          <input type="hidden" name="id" value={image.id} />
+                          <input type="hidden" name="returnTo" value="/admin/gallery" />
+                        </ConfirmDelete>
+                      </div>
+                    </td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
-        </div>
+        )}
       </section>
-    </main>
-    </>
+    </AdminShell>
   );
 }

@@ -4,7 +4,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { loginAdmin } from "@/app/actions";
 import { isAdminAuthenticated } from "@/lib/admin-auth";
-import { loginWaitMessage } from "@/lib/rate-limit";
+import { loginWaitMessage, wrongPasswordMessage } from "@/lib/rate-limit";
 
 // QA-3: rendered per request so the query string (errors, notices) is read.
 export const dynamic = "force-dynamic";
@@ -17,10 +17,11 @@ export const metadata: Metadata = {
 
 function loginError(error: string | undefined, wait: string | undefined) {
   if (!error) return null;
-  // Waits run up to 1440 minutes now that there is a 20-a-day limit.
+  // An actual lockout gives the real wait (up to 1440 minutes with the 20-a-day limit).
   if (error === "rate-limited") return loginWaitMessage(wait);
   if (error === "unavailable") return "Sign-in is unavailable right now. Please try again in a few minutes.";
-  return "That password did not work.";
+  // Batch 5b: built from the throttle's own constants (SEC-3), so it can't drift.
+  return wrongPasswordMessage();
 }
 
 const loginNotices: Record<string, string> = {
@@ -42,39 +43,40 @@ export default async function AdminLoginPage({
   const notice = success ? loginNotices[success] : undefined;
 
   return (
-    <main className="flex min-h-[100svh] items-center justify-center px-4 py-10">
-      {/* Batch 5 (design.md admin login): a centred card with a blue top band and the full logo. */}
-      <div className="w-full max-w-[400px] border border-[#e1e7f0] border-t-[6px] border-t-blue bg-white p-8">
-        <Image src="/brand/logo-full.png" width={564} height={519} alt="FM Media" priority sizes="120px" className="mx-auto h-auto w-[120px]" />
-        <h1 className="mt-5 text-center text-2xl font-semibold text-ink">Admin sign in</h1>
+    <main className="ad-login">
+      {/* design.md admin login: a centred 400px card, 6px blue top band, logo-full at 120px. */}
+      <div className="ad-login__card">
+        <Image src="/brand/logo-full.png" width={564} height={519} alt="FM Media" priority sizes="120px" />
+        <h1>Admin sign in</h1>
         {notice ? (
-          <p className="mt-4 bg-tint px-3 py-2 text-sm font-medium text-ink" role="status">
+          <p className="ad-login__msg" role="status">
             {notice}
           </p>
         ) : null}
-        <form action={loginAdmin} className="mt-6 grid gap-4">
+        <form action={loginAdmin} className="ad-login__form">
           {errorText ? (
-            <p id="login-error" className="bg-[#fdecea] px-3 py-2 text-sm font-medium text-[#8a1c12]" role="alert">
+            <p id="login-error" className="ad-login__err" role="alert">
               {errorText}
             </p>
           ) : null}
-          <label className="grid gap-2 text-sm font-medium text-ink">
-            Password
+          <div className="ad-field">
+            <label htmlFor="login-password">Password</label>
             <input
+              id="login-password"
               name="password"
               type="password"
               autoComplete="current-password"
               required
               aria-invalid={errorText ? true : undefined}
               aria-describedby={errorText ? "login-error" : undefined}
-              className="min-h-[44px] border border-[#6b7380] px-3 py-2"
+              className="ad-input"
             />
-          </label>
-          <button className="focus-ring min-h-[44px] w-full bg-blue px-5 text-sm font-semibold text-white hover:bg-blue-deep">Sign in</button>
+          </div>
+          <button className="ad-btn ad-btn--primary">Sign in</button>
         </form>
-        <p className="mt-5 text-center text-sm text-ink/75">
+        <p className="ad-login__note">
           For the owner of fm-media.org only.{" "}
-          <Link href="/" className="focus-ring inline-flex min-h-[44px] items-center underline">
+          <Link href="/" className="ad-link">
             Back to the site
           </Link>
         </p>

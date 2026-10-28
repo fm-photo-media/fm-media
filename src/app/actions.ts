@@ -18,8 +18,10 @@ import {
   checkUploadedBlob,
   detectImageType,
   galleryUploadPathname,
+  imageDimensions,
   isAllowedImageType,
-  isOwnBlobUrl
+  isOwnBlobUrl,
+  type ImageSize
 } from "@/lib/upload";
 import { galleryImageSchema, makeInquirySchema, serviceSchema } from "@/lib/validation";
 
@@ -97,14 +99,17 @@ function blobToken() {
 /**
  * SEC-8 / SEC-24: delete a blob only if it is this project's own gallery file, by its
  * canonical URL (canonicalBlobUrl refuses any variant spelling). Never throws.
+ * Returns true only when the file was actually deleted (QA-32).
  */
 async function deleteBlobQuietly(url: string | null | undefined) {
   const canonical = url ? canonicalBlobUrl(url, blobToken()) : null;
-  if (!canonical) return;
+  if (!canonical) return false;
   try {
     await del(canonical);
+    return true;
   } catch (error) {
     console.error(`[gallery] could not delete blob ${canonical}`, error);
+    return false;
   }
 }
 
@@ -116,15 +121,15 @@ async function deleteBlobQuietly(url: string | null | undefined) {
  */
 async function deleteBlobIfUnused(url: string | null | undefined) {
   const canonical = url ? canonicalBlobUrl(url, blobToken()) : null;
-  if (!canonical) return;
+  if (!canonical) return false;
   let stillUsed: number;
   try {
     stillUsed = await prisma.galleryImage.count({ where: { imageUrl: canonical } });
   } catch (error) {
     console.error(`[gallery] could not check whether blob ${canonical} is in use; keeping it`, error);
-    return;
+    return false;
   }
-  if (stillUsed === 0) await deleteBlobQuietly(canonical);
+  return stillUsed === 0 ? deleteBlobQuietly(canonical) : false;
 }
 
 /**
@@ -161,7 +166,8 @@ async function galleryImageUrlFromForm(formData: FormData, existingUrl: string |
       redirect(withParams(returnTo, { error: "invalid-image" }));
     }
 
-    return { imageUrl, newBlobUrl: isNewBlob ? imageUrl : null };
+    // A browser upload's size was read from the file by the admin form (width/height fields).
+    return { imageUrl, newBlobUrl: isNewBlob ? imageUrl : null, size: null };
   }
 
   if (file.size > MAX_GALLERY_UPLOAD_BYTES) {
@@ -194,7 +200,8 @@ async function galleryImageUrlFromForm(formData: FormData, existingUrl: string |
     redirect(withParams(returnTo, { error: "upload-failed" }));
   }
 
-  return { imageUrl: url, newBlobUrl: url };
+  // Batch 5b: the size comes from the file's own header, not from a typed field.
+  return { imageUrl: url, newBlobUrl: url, size: imageDimensions(bytes) };
 }
 
 // ---------------------------------------------------------------------------
@@ -419,7 +426,8 @@ export async function updateService(formData: FormData) {
   const parsed = parseService(formData);
 
   if (!parsed.success) {
-    redirect("/admin/services?error=invalid-service");
+    // Batch 5b: back to the same row's editor, so the owner sees which service failed.
+    redirect(withParams(`/admin/services?edit=${encodeURIComponent(id)}`, { error: "invalid-service" }));
   }
 
   await prisma.service.update({ where: { id }, data: parsed.data });
@@ -449,9 +457,10 @@ function revalidateGalleryPages() {
   revalidatePath("/admin/gallery");
 }
 
-function parseGalleryImage(formData: FormData, imageUrl: string) {
+function parseGalleryImage(formData: FormData, imageUrl: string, size: ImageSize | null) {
   return galleryImageSchema.safeParse({
     ...Object.fromEntries(formData),
+    ...(size ?? {}),
     imageUrl,
     featured: checkboxValue(formData, "featured"),
     published: checkboxValue(formData, "published")
@@ -464,14 +473,17 @@ function galleryErrorCode(issues: { path: (string | number)[] }[]) {
   if (fields.size === 1 && fields.has("shoot")) return "invalid-shoot";
   if (fields.size === 1 && fields.has("town")) return "invalid-town";
   if (fields.size === 2 && fields.has("shoot") && fields.has("town")) return "invalid-caption";
+  // Batch 5b / DES-15: alt text is needed to publish; a photo under 320 x 240 is refused.
+  if (fields.size === 1 && fields.has("alt")) return "invalid-alt";
+  if (fields.size > 0 && Array.from(fields).every((field) => field === "width" || field === "height")) return "image-too-small";
   return "invalid-image";
 }
 
 export async function createGalleryImage(formData: FormData) {
   await requireAdmin();
   const returnTo = "/admin/gallery";
-  const { imageUrl, newBlobUrl } = await galleryImageUrlFromForm(formData, null, returnTo);
-  const parsed = parseGalleryImage(formData, imageUrl);
+  const { imageUrl, newBlobUrl, size } = await galleryImageUrlFromForm(formData, null, returnTo);
+  const parsed = parseGalleryImage(formData, imageUrl, size);
 
   if (!parsed.success) {
     // SEC-21: the URL may be another row's file (a stale or crafted hidden field).
@@ -494,8 +506,8 @@ export async function updateGalleryImage(formData: FormData) {
     redirect("/admin/gallery?error=not-found");
   }
 
-  const { imageUrl, newBlobUrl } = await galleryImageUrlFromForm(formData, existing.imageUrl, returnTo);
-  const parsed = parseGalleryImage(formData, imageUrl);
+  const { imageUrl, newBlobUrl, size } = await galleryImageUrlFromForm(formData, existing.imageUrl, returnTo);
+  const parsed = parseGalleryImage(formData, imageUrl, size);
 
   if (!parsed.success) {
     // SEC-21: the URL may be another row's file (a stale or crafted hidden field).
@@ -533,14 +545,16 @@ export async function deleteGalleryImage(formData: FormData) {
   const id = formString(formData, "id");
   const image = await prisma.galleryImage.findUnique({ where: { id }, select: { imageUrl: true } });
 
+  let fileDeleted = false;
   if (image) {
     await prisma.galleryImage.delete({ where: { id } });
     // SEC-8: the file goes too (homeowners may ask for a photo to come down).
-    await deleteBlobIfUnused(image.imageUrl);
+    fileDeleted = await deleteBlobIfUnused(image.imageUrl);
   }
 
   revalidateGalleryPages();
-  redirect("/admin/gallery?success=gallery-deleted");
+  // QA-32: the notice says the file was removed only when it really was.
+  redirect(`/admin/gallery?success=${fileDeleted ? "gallery-deleted-file" : "gallery-deleted"}`);
 }
 
 // ---------------------------------------------------------------------------

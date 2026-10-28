@@ -2,10 +2,10 @@
 "use client";
 
 import { upload } from "@vercel/blob/client";
-import { useCallback, useEffect, useRef, useState, type FormEvent } from "react";
+import { useCallback, useEffect, useRef, useState, type ChangeEvent, type FormEvent } from "react";
 import { useFormStatus } from "react-dom";
 import { discardUnsavedGalleryUpload } from "@/app/actions";
-import { Checkbox, TextInput } from "@/app/admin/admin-fields";
+import { TextInput } from "@/app/admin/admin-fields";
 import { CAPTION_MESSAGES } from "@/lib/captions";
 import {
   ALLOWED_IMAGE_TYPES,
@@ -14,6 +14,7 @@ import {
   UNSENT_AFTER_UPLOAD_MESSAGE,
   clientUploadErrorMessage,
   galleryUploadPathname,
+  imageDimensions,
   isAllowedImageType,
   shouldUploadFromBrowser
 } from "@/lib/upload";
@@ -45,9 +46,14 @@ type GalleryImageFormProps = {
   action: (formData: FormData) => void | Promise<void>;
   defaults?: GalleryImageFormValues;
   fileLabel: string;
+  fileHint?: string;
   submitLabel: string;
+  formLabel: string;
+  categories: string[];
   requireFile?: boolean;
 };
+
+const DEFAULT_SIZE = { width: 1600, height: 1100 };
 
 /** The submit button. It reads the form's pending state, so it is disabled while saving. */
 function SubmitButton({
@@ -72,14 +78,23 @@ function SubmitButton({
   return (
     <button
       disabled={isUploading || pending}
-      className="focus-ring rounded-full bg-ink px-5 py-2 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:bg-ink/55"
+      className="ad-btn ad-btn--primary"
     >
       {text}
     </button>
   );
 }
 
-export function GalleryImageForm({ action, defaults, fileLabel, submitLabel, requireFile = false }: GalleryImageFormProps) {
+export function GalleryImageForm({
+  action,
+  defaults,
+  fileLabel,
+  fileHint = "",
+  submitLabel,
+  formLabel,
+  categories,
+  requireFile = false
+}: GalleryImageFormProps) {
   const formId = defaults?.id ?? "new";
   const hintId = `${formId}-image-hint`;
   const formRef = useRef<HTMLFormElement>(null);
@@ -96,6 +111,30 @@ export function GalleryImageForm({ action, defaults, fileLabel, submitLabel, req
   const [progress, setProgress] = useState(0);
   const [isUploading, setIsUploading] = useState(false);
   const [status, setStatus] = useState("");
+  // DES-15 (batch 5b): Published can only be ticked once the photo has alt text.
+  const [alt, setAlt] = useState(defaults?.alt ?? "");
+  const [published, setPublished] = useState(Boolean(defaults?.published) && (defaults?.alt ?? "").trim().length >= 8);
+  // Batch 5b note 7: the size is read from the chosen file, never typed in.
+  const [size, setSize] = useState({ width: defaults?.width ?? DEFAULT_SIZE.width, height: defaults?.height ?? DEFAULT_SIZE.height });
+  const [sizeNote, setSizeNote] = useState("");
+
+  async function handleFileChange(event: ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0];
+    setSizeNote("");
+    if (!file) {
+      setSize({ width: defaults?.width ?? DEFAULT_SIZE.width, height: defaults?.height ?? DEFAULT_SIZE.height });
+      return;
+    }
+    try {
+      const read = imageDimensions(new Uint8Array(await file.arrayBuffer()));
+      if (read) {
+        setSize(read);
+        setSizeNote(`This photo is ${read.width} × ${read.height} pixels.`);
+      }
+    } catch {
+      // The server reads it again for files it receives; otherwise the old size stays.
+    }
+  }
 
   const handlePendingChange = useCallback((pending: boolean) => {
     pendingRef.current = pending;
@@ -246,10 +285,44 @@ export function GalleryImageForm({ action, defaults, fileLabel, submitLabel, req
     });
   }
 
+
+  const altReady = alt.trim().length >= 8;
+  const id = (name: string) => `${formId}-${name}`;
+  const categoryOptions = Array.from(new Set([...(defaults?.category ? [defaults.category] : []), ...categories]));
+
   return (
-    <form ref={formRef} action={action} onSubmit={handleSubmit} className="mt-5 grid gap-4">
+    <form ref={formRef} action={action} onSubmit={handleSubmit} className="ad-edit" aria-label={formLabel}>
       {defaults?.id ? <input type="hidden" name="id" value={defaults.id} /> : null}
       <input ref={imageUrlRef} type="hidden" name="imageUrl" defaultValue={defaults?.imageUrl ?? ""} />
+      {/* Batch 5b note 7: the pixel size is read from the file (here, and again on the server). */}
+      <input type="hidden" name="width" value={size.width} />
+      <input type="hidden" name="height" value={size.height} />
+
+      <div className="ad-field ad-span-2">
+        <label htmlFor={id("imageFile")}>{fileLabel}</label>
+        <input
+          id={id("imageFile")}
+          ref={fileRef}
+          name="imageFile"
+          type="file"
+          accept={ALLOWED_IMAGE_TYPES.join(",")}
+          required={requireFile}
+          aria-describedby={hintId}
+          onChange={handleFileChange}
+          className="ad-input"
+        />
+        {/* QA-23: 13px+ at 7:1. */}
+        <small id={hintId} className="ad-hint">
+          {fileHint} JPEG, PNG, WebP or AVIF, up to 10 MB. Files over 900 KB upload straight to storage.
+          {sizeNote ? (
+            <>
+              {" "}
+              <span className="tnum">{sizeNote}</span>
+            </>
+          ) : null}
+        </small>
+      </div>
+
       {/* Legal R2 (round 1): titles, shoots, towns and alt text are public captions. */}
       <TextInput
         name="title"
@@ -258,77 +331,105 @@ export function GalleryImageForm({ action, defaults, fileLabel, submitLabel, req
         idPrefix={formId}
         placeholder="Front exterior"
         hint="No street names or house numbers."
+        maxLength={160}
+        className="ad-span-2"
+      />
+      <div className="ad-field ad-span-2">
+        <label htmlFor={id("alt")}>Alt text</label>
+        <textarea
+          id={id("alt")}
+          name="alt"
+          rows={2}
+          maxLength={400}
+          value={alt}
+          onChange={(event) => {
+            setAlt(event.target.value);
+            if (event.target.value.trim().length < 8) setPublished(false);
+          }}
+          aria-describedby={id("alt-hint")}
+          className="ad-input"
+        />
+        <small id={id("alt-hint")} className="ad-hint">
+          Say what the photo shows, for people who can&apos;t see it. Example: &ldquo;Living room with a sectional sofa and hardwood
+          floor&rdquo;. No street names or house numbers. Needed before the photo can be published.
+        </small>
+      </div>
+      {/* Batch 5: the portfolio groups photos by shoot and captions them by town. */}
+      <TextInput
+        name="shoot"
+        label="Shoot (optional)"
+        defaultValue={defaults?.shoot ?? ""}
+        required={false}
+        maxLength={80}
+        idPrefix={formId}
+        placeholder="Frame house"
+        hint="Photos with the same shoot name show together on the portfolio. No street names or house numbers."
+        // QA-27: checked before sending, so a refused value never loses the other edits.
+        pattern="(?!#)[^\p{Nd}]*"
+        patternMessage={CAPTION_MESSAGES.shoot}
       />
       <TextInput
-        name="alt"
-        label="Alt Text"
-        defaultValue={defaults?.alt}
+        name="town"
+        label="Town (optional)"
+        defaultValue={defaults?.town ?? ""}
+        required={false}
+        maxLength={60}
         idPrefix={formId}
-        placeholder="Living room with sectional sofa and hardwood floor"
-        hint="Describe what the photo shows, for people who can't see it. No street names or house numbers."
+        placeholder="Oak Park"
+        hint="The town only. Never the street address."
+        pattern="[^\p{Nd}]*"
+        patternMessage={CAPTION_MESSAGES.town}
       />
-      <TextInput name="category" label="Category" defaultValue={defaults?.category} idPrefix={formId} />
-      {/* Batch 5: the portfolio groups photos by shoot and captions them by town. */}
-      <div className="grid gap-4 sm:grid-cols-2">
-        <TextInput
-          name="shoot"
-          label="Shoot (optional)"
-          defaultValue={defaults?.shoot ?? ""}
-          required={false}
-          maxLength={80}
-          idPrefix={formId}
-          placeholder="Frame house"
-          hint="Photos with the same shoot name show together on the portfolio. No street names or house numbers."
-          // QA-27: checked before sending, so a refused value never loses the other edits.
-          pattern="(?!#)[^\p{Nd}]*"
-          patternMessage={CAPTION_MESSAGES.shoot}
-        />
-        <TextInput
-          name="town"
-          label="Town (optional)"
-          defaultValue={defaults?.town ?? ""}
-          required={false}
-          maxLength={60}
-          idPrefix={formId}
-          placeholder="Oak Park"
-          hint="The town only. No street names or house numbers."
-          pattern="[^\p{Nd}]*"
-          patternMessage={CAPTION_MESSAGES.town}
-        />
+      <div className="ad-field">
+        <label htmlFor={id("category")}>Category</label>
+        <select id={id("category")} name="category" defaultValue={defaults?.category ?? categoryOptions[0]} className="ad-input">
+          {categoryOptions.map((category) => (
+            <option key={category} value={category}>
+              {category}
+            </option>
+          ))}
+        </select>
       </div>
-      <label className="grid gap-1 text-sm font-medium text-ink">
-        {fileLabel}
-        <input
-          ref={fileRef}
-          name="imageFile"
-          type="file"
-          accept={ALLOWED_IMAGE_TYPES.join(",")}
-          required={requireFile}
-          aria-describedby={hintId}
-          className="rounded-md border border-line px-3 py-2 font-normal file:mr-3 file:rounded-full file:border-0 file:bg-ink file:px-3 file:py-1.5 file:text-sm file:font-semibold file:text-white" /* taste-skill-ignore: a real file input (admin, batch 5b) */
-        />
-        {/* QA-23: 14px at 6.9:1 (was 12px at 3.98:1). */}
-        <span id={hintId} className="text-sm font-normal text-ink/80">
-          JPEG, PNG, WebP, or AVIF. Max 10 MB.
+      <div className="ad-field">
+        <span className="ad-field__label" id={id("visibility")}>
+          On the site
         </span>
-      </label>
-      <div className="grid gap-4 sm:grid-cols-2">
-        <TextInput name="width" label="Width" type="number" defaultValue={defaults?.width ?? 1600} />
-        <TextInput name="height" label="Height" type="number" defaultValue={defaults?.height ?? 1100} />
+        <div role="group" aria-labelledby={id("visibility")}>
+          <label className="ad-check" htmlFor={id("published")}>
+            <input
+              id={id("published")}
+              name="published"
+              type="checkbox"
+              checked={published}
+              disabled={!altReady}
+              aria-describedby={altReady ? undefined : id("published-hint")}
+              onChange={(event) => setPublished(event.target.checked)}
+            />
+            <span>Published</span>
+          </label>
+          <label className="ad-check" htmlFor={id("featured")}>
+            <input id={id("featured")} name="featured" type="checkbox" defaultChecked={defaults?.featured} />
+            <span>Featured on the home page</span>
+          </label>
+          {altReady ? null : (
+            <small id={id("published-hint")} className="ad-hint">
+              Add alt text to publish this photo.
+            </small>
+          )}
+        </div>
       </div>
-      <div className="flex flex-wrap items-center gap-5">
-        <Checkbox name="featured" label="Featured" defaultChecked={defaults?.featured} />
-        <Checkbox name="published" label="Published" defaultChecked={defaults?.published ?? true} />
-        <SubmitButton label={submitLabel} isUploading={isUploading} progress={progress} onPendingChange={handlePendingChange} />
-      </div>
-      <p className="text-sm font-medium text-ink/65" role="status">
-        {status}
-      </p>
+
       {error ? (
-        <p className="rounded-md border border-line bg-white px-4 py-3 text-sm font-medium text-clay" role="alert">
+        <p className="ad-alert" role="alert">
           {error}
         </p>
       ) : null}
+      <div className="ad-edit__acts">
+        <p className="ad-status" role="status">
+          {status}
+        </p>
+        <SubmitButton label={submitLabel} isUploading={isUploading} progress={progress} onPendingChange={handlePendingChange} />
+      </div>
     </form>
   );
 }

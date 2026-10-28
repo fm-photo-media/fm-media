@@ -50,6 +50,13 @@ html {
   -webkit-text-size-adjust: 100%;
   scroll-padding-top: 24px;
 }
+/* QA-26 (WCAG 2.4.11): the phone price total is sticky at the bottom, so focused controls
+   scroll clear of it. */
+@media (max-width: 640px) {
+  html {
+    scroll-padding-bottom: 88px;
+  }
+}
 
 body {
   margin: 0;
@@ -78,12 +85,6 @@ img {
 
 .on-blue :focus-visible {
   outline-color: #fff;
-}
-
-/* Kept for the admin screens (restyled in batch 5b). */
-.focus-ring {
-  @apply focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4;
-  outline-color: var(--blue);
 }
 
 /* ---------- shared ---------- */
@@ -121,6 +122,10 @@ img {
   font-family: var(--font-sans);
   font-variant-numeric: tabular-nums lining-nums;
 }
+/* A phone number never breaks across lines. */
+a[href^="tel:"] {
+  white-space: nowrap;
+}
 .h1 {
   font-family: var(--font-sans);
   font-weight: 600;
@@ -128,6 +133,7 @@ img {
   line-height: 1;
   letter-spacing: -0.01em;
   color: var(--blue);
+  text-wrap: balance; /* DES-32: no orphan words in headings */
 }
 .h2 {
   font-family: var(--font-sans);
@@ -135,6 +141,7 @@ img {
   font-size: var(--fs-h2);
   line-height: 1.05;
   color: var(--blue);
+  text-wrap: balance;
 }
 .h3 {
   font-family: var(--font-sans);
@@ -149,6 +156,14 @@ img {
 @media (max-width: 640px) {
   .h2 {
     font-size: 32px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
   }
 }
 
@@ -406,6 +421,11 @@ img {
     padding-top: var(--s4);
   }
 }
+@media (max-width: 640px) {
+  .phead__act .btn {
+    width: 100%;
+  }
+}
 
 /* ---------- home hero ---------- */
 .hero {
@@ -478,6 +498,50 @@ img {
   }
   .hero__photo {
     margin-top: 32px;
+  }
+}
+/* DES-23: with no photo of his own yet, the hero's second half carries the facts. */
+.hero-facts {
+  background: var(--blue);
+  color: #fff;
+  padding: 48px;
+  display: grid;
+  align-content: center;
+  justify-items: start;
+  gap: 12px;
+  font-family: var(--font-sans);
+  font-weight: 600;
+}
+.hero-facts__label {
+  font-size: 22px;
+  color: var(--on-blue-soft);
+}
+.hero-facts__phone {
+  font-size: clamp(40px, 4.4vw, 64px);
+  line-height: 1.05;
+  color: #fff;
+  text-decoration: none;
+  font-variant-numeric: tabular-nums lining-nums;
+  padding: 4px 0;
+}
+.hero-facts__phone:hover {
+  text-decoration: underline;
+  text-decoration-thickness: 3px;
+  text-underline-offset: 8px;
+}
+.hero-facts p {
+  font-size: 22px;
+}
+.hero-facts .btn {
+  margin-top: 12px;
+}
+@media (max-width: 640px) {
+  .hero-facts {
+    aspect-ratio: auto;
+    padding: 32px var(--m);
+  }
+  .hero-facts__phone {
+    font-size: 40px;
   }
 }
 
@@ -626,6 +690,9 @@ img {
 .offer .terms {
   margin-top: 8px;
 }
+.offer + .group {
+  margin-top: 40px;
+}
 .prices__foot {
   grid-column: 6 / 13;
   grid-row: 4;
@@ -687,6 +754,11 @@ img {
   }
   .fine-only {
     display: none !important;
+  }
+}
+@media (pointer: coarse) {
+  span.touch-only {
+    display: inline !important;
   }
 }
 @media (max-width: 1000px) {
@@ -837,6 +909,10 @@ img {
 .ptable tbody th {
   font-weight: 600;
 }
+.ptable tbody th .hint {
+  display: block;
+  margin-top: 2px;
+}
 .ptable .num {
   text-align: right;
   padding-right: 0;
@@ -920,9 +996,17 @@ img {
   padding-top: 40px;
   padding-bottom: 40px;
 }
+/* DES-35: the notice stays ragged-right (no justify), set at the lede size as the section's
+   one sentence; its links wrap as whole units on phones (below). */
 .shoot--next p {
   margin-top: 12px;
   max-width: 60ch;
+  font-size: var(--fs-lead);
+  line-height: 1.4;
+}
+/* The first shoot sits clearly apart from the page head's button (not a label above it). */
+.phead + .shoot {
+  margin-top: clamp(88px, 8vw, 120px);
 }
 .viewer {
   width: min(1400px, 96vw);
@@ -960,6 +1044,9 @@ img {
   }
   .viewer__bar p {
     display: none;
+  }
+  .shoot--next .fact .tap { /* DES-39: (0,3,0) beats the utilities .fact .tap by specificity, not order */
+    display: inline-block;
   }
 }
 
@@ -1078,6 +1165,53 @@ img {
   }
   .about__act .btn {
     width: 100%;
+  }
+}
+/* DES-24 / Legal R4: no portrait yet, so the text takes columns 1-7 and the facts sit in a
+   tint panel on the right; each fact reads as a row, label left and value right. */
+.about__text--solo {
+  grid-column: 1 / 8;
+}
+.about__side {
+  grid-column: 9 / 13;
+  background: var(--tint);
+  padding: 32px;
+  display: grid;
+  gap: 16px;
+  align-self: start;
+}
+.about__side .facts div {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  grid-template-columns: 1fr;
+  gap: 16px;
+}
+.about__side .facts dd {
+  text-align: right;
+}
+.about__side .about__act {
+  justify-content: space-between;
+}
+@media (max-width: 900px) {
+  .about__text--solo,
+  .about__side {
+    grid-column: 1 / -1;
+  }
+  .about__side {
+    margin-top: 40px;
+  }
+}
+@media (max-width: 640px) {
+  .about__side {
+    padding: 24px 20px;
+  }
+  /* DES-36: on a phone each label sits over its value. */
+  .about__side .facts div {
+    display: block;
+  }
+  .about__side .facts dd {
+    text-align: left;
   }
 }
 
@@ -1319,6 +1453,29 @@ textarea.input {
   display: inline-block;
   padding: 4px 0;
 }
+.notice__list {
+  margin-top: 10px;
+  display: grid;
+  gap: 2px;
+  list-style: none;
+  padding: 0;
+}
+.notice-again {
+  margin-bottom: 32px;
+}
+.notice-slot:focus {
+  outline: none;
+}
+.notice-slot:focus-visible .notice {
+  outline: 3px solid var(--blue);
+  outline-offset: 2px;
+}
+/* Legal R1: the offer terms, visible beside the first-shoot box. */
+.first__terms {
+  margin: 4px 0 4px 34px;
+  font-size: 16px;
+  max-width: 60ch;
+}
 .hp {
   position: absolute;
   left: -9999px;
@@ -1378,6 +1535,11 @@ textarea.input {
   display: inline-block;
   font-variant-numeric: tabular-nums;
   overflow-wrap: anywhere;
+}
+/* QA-29: the contact links are at least 44px tall. */
+.bizcard__lines a {
+  min-height: 44px;
+  padding: 8px 0;
 }
 .bizcard__lines a:hover {
   color: var(--blue);
@@ -1442,6 +1604,10 @@ textarea.input {
   .bizcard {
     padding: 32px 20px;
     border-width: 10px;
+  }
+  /* DES-33: the card's logo no longer fills the footer's first phone screen. */
+  .bizcard__brand img {
+    max-width: 200px;
   }
   .bizcard__lines {
     padding-left: 16px;
@@ -1592,293 +1758,12 @@ textarea.input {
   }
 }
 
-/* ---------- admin shell (the logo header; the full restyle is batch 5b) ---------- */
-.admin {
-  --font-sans: var(--font-jost), "Century Gothic", sans-serif;
-  --font-serif: var(--font-jost), "Century Gothic", sans-serif;
-  font-family: var(--font-sans);
-  font-size: 16px;
-  line-height: 1.5;
-  min-height: 100svh;
-  background: #f7f9fd;
-}
-.admin-top {
-  background: #fff;
-  border-bottom: 1px solid #e1e7f0; /* taste-skill-ignore: admin app bar (app-screen rules allow quiet borders) */
-}
-.admin-top__in {
-  max-width: 80rem;
-  margin: 0 auto;
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px 24px;
-  padding: 8px 16px;
-}
-.admin-brand {
-  display: inline-flex;
-  align-items: center;
-  gap: 10px;
-  min-height: 48px;
-  text-decoration: none;
-  color: var(--ink);
-}
-.admin-brand img {
-  height: 40px;
-  width: auto;
-}
-.admin-brand b {
-  font-weight: 600;
-}
-.admin-brand span {
-  color: #4f5866;
-}
-.admin-nav {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 4px 20px;
-  font-size: 15px;
-  font-weight: 500;
-}
-.admin-nav a,
-.admin-nav button {
-  display: inline-flex;
-  align-items: center;
-  min-height: 44px;
-  padding: 0 2px;
-  text-decoration: none;
-  color: var(--ink);
-  background: none;
-  border: 0;
-  cursor: pointer;
-  font: inherit;
-}
-.admin-nav a:hover,
-.admin-nav button:hover,
-.admin-nav a[aria-current="page"] {
-  color: var(--blue);
-}
-.admin-nav a[aria-current="page"] {
-  text-decoration: underline;
-  text-underline-offset: 6px;
-}
-
-@media (prefers-reduced-motion: reduce) {
-  *,
-  *::before,
-  *::after {
-    transition-duration: 0.01ms !important;
-    animation-duration: 0.01ms !important;
-  }
-}
-
-.ptable tbody th .hint {
-  display: block;
-  margin-top: 2px;
-}
-
-.notice__list {
-  margin-top: 10px;
-  display: grid;
-  gap: 2px;
-  list-style: none;
-  padding: 0;
-}
-.notice-again {
-  margin-bottom: 32px;
-}
-.notice-slot:focus {
-  outline: none;
-}
-.notice-slot:focus-visible .notice {
-  outline: 3px solid var(--blue);
-  outline-offset: 2px;
-}
-
-/* The first shoot sits clearly apart from the page head's button (not a label above it). */
-.phead + .shoot {
-  margin-top: clamp(88px, 8vw, 120px);
-}
-
-/* ---------- batch 5a fix round 1 ---------- */
-/* QA-26 (WCAG 2.4.11): the phone price total is sticky at the bottom, so focused controls
-   scroll clear of it. */
-@media (max-width: 640px) {
-  html {
-    scroll-padding-bottom: 88px;
-  }
-}
-
-/* QA-29: footer card contact links are at least 44px tall on phones. */
-.bizcard__lines a {
-  min-height: 44px;
-  padding: 8px 0;
-}
-
-/* DES-33: on a phone the card's logo no longer fills the first screen of the footer. */
-@media (max-width: 640px) {
-  .bizcard__brand img {
-    max-width: 200px;
-  }
-}
-
-/* DES-30: links inside a sentence keep the line rhythm (padding still grows the target). */
+/* ---------- utilities (after every component, so they win ties) ---------- */
+/* DES-30: links inside a sentence keep the line rhythm (padding still grows the target).
+   Same specificity as the components' own link rules (.hero__act .link, .notice a, …),
+   which is why this section comes last. */
 p .tap,
 .fact .tap {
   display: inline;
   padding: 10px 0;
-}
-
-/* DES-32: no orphan words in headings. */
-.h1,
-.h2 {
-  text-wrap: balance;
-}
-
-/* Legal R1: the offer terms, visible beside the first-shoot box. */
-.first__terms {
-  margin: 4px 0 4px 34px;
-  font-size: 16px;
-  max-width: 60ch;
-}
-
-/* DES-23: with no photo of his own yet, the hero's second half carries the facts. */
-.hero-facts {
-  background: var(--blue);
-  color: #fff;
-  padding: 48px;
-  display: grid;
-  align-content: center;
-  justify-items: start;
-  gap: 12px;
-  font-family: var(--font-sans);
-  font-weight: 600;
-}
-.hero-facts__label {
-  font-size: 22px;
-  color: var(--on-blue-soft);
-}
-.hero-facts__phone {
-  font-size: clamp(40px, 4.4vw, 64px);
-  line-height: 1.05;
-  color: #fff;
-  text-decoration: none;
-  font-variant-numeric: tabular-nums lining-nums;
-  padding: 4px 0;
-}
-.hero-facts__phone:hover {
-  text-decoration: underline;
-  text-decoration-thickness: 3px;
-  text-underline-offset: 8px;
-}
-.hero-facts p {
-  font-size: 22px;
-}
-.hero-facts .btn {
-  margin-top: 12px;
-}
-@media (max-width: 640px) {
-  .hero-facts {
-    aspect-ratio: auto;
-    padding: 32px var(--m);
-  }
-  .hero-facts__phone {
-    font-size: 40px;
-  }
-}
-
-/* DES-24 / Legal R4: no portrait yet, so the About text takes the left of the grid. */
-.about__text--solo {
-  grid-column: 1 / 9;
-}
-@media (max-width: 900px) {
-  .about__text--solo {
-    grid-column: 1 / -1;
-  }
-}
-
-.offer + .group {
-  margin-top: 40px;
-}
-
-@media (pointer: coarse) {
-  span.touch-only {
-    display: inline !important;
-  }
-}
-
-/* About with no portrait yet: the text on the left, the facts in a tint panel on the right. */
-.about__text--solo {
-  grid-column: 1 / 8;
-}
-.about__side {
-  grid-column: 9 / 13;
-  background: var(--tint);
-  padding: 32px;
-  display: grid;
-  gap: 16px;
-  align-self: start;
-}
-.about__side .facts div {
-  grid-template-columns: 1fr;
-  gap: 0;
-}
-@media (max-width: 900px) {
-  .about__text--solo,
-  .about__side {
-    grid-column: 1 / -1;
-  }
-  .about__side {
-    margin-top: 40px;
-  }
-}
-@media (max-width: 640px) {
-  .about__side {
-    padding: 24px 20px;
-  }
-  .phead__act .btn {
-    width: 100%;
-  }
-}
-
-/* About side panel: each fact reads as a row, label left and value right, like the price list. */
-.about__side .facts div {
-  display: flex;
-  justify-content: space-between;
-  align-items: baseline;
-  gap: 16px;
-}
-.about__side .facts dd {
-  text-align: right;
-}
-.about__side .about__act {
-  justify-content: space-between;
-}
-/* A phone number never breaks across lines. */
-a[href^="tel:"] {
-  white-space: nowrap;
-}
-
-/* DES-35: the portfolio notice stays ragged-right (no justify), set at the lede size as the
-   section's one sentence; its links wrap as whole units on phones. */
-.shoot--next p {
-  font-size: var(--fs-lead);
-  line-height: 1.4;
-}
-@media (max-width: 640px) {
-  .shoot--next .tap {
-    display: inline-block;
-  }
-}
-
-/* DES-36: About facts on a phone: each label sits over its value. */
-@media (max-width: 640px) {
-  .about__side .facts div {
-    display: block;
-  }
-  .about__side .facts dd {
-    text-align: left;
-  }
 }

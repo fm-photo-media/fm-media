@@ -264,13 +264,29 @@ export function checkAdminLoginLimit(prisma: PrismaClient, headers: Headers) {
 
 const MAX_LOGIN_WAIT_MINUTES = 24 * 60;
 
-/** "about 2 hours and 15 minutes": a duration in minutes, for waits up to a day. */
-export function formatWaitMinutes(totalMinutes: number) {
+/** "2 hours and 15 minutes": a duration in whole minutes. */
+function durationWords(totalMinutes: number) {
   const plural = (n: number, unit: string) => `${n} ${unit}${n === 1 ? "" : "s"}`;
-  if (totalMinutes < 60) return `about ${plural(totalMinutes, "minute")}`;
+  if (totalMinutes < 60) return plural(totalMinutes, "minute");
   const hours = Math.floor(totalMinutes / 60);
   const minutes = totalMinutes % 60;
-  return minutes === 0 ? `about ${plural(hours, "hour")}` : `about ${plural(hours, "hour")} and ${plural(minutes, "minute")}`;
+  return minutes === 0 ? plural(hours, "hour") : `${plural(hours, "hour")} and ${plural(minutes, "minute")}`;
+}
+
+/** "about 2 hours and 15 minutes": a duration in minutes, for waits up to a day. */
+export function formatWaitMinutes(totalMinutes: number) {
+  return `about ${durationWords(totalMinutes)}`;
+}
+
+/**
+ * Batch 5b (design.md "Batch 5a re-check"): the wrong-password line states the first
+ * login window, generated from the same constants the throttle uses (SEC-3), so the copy
+ * can't drift from the real limit. An actual lockout still shows the real wait
+ * (loginWaitMessage).
+ */
+export function wrongPasswordMessage(windows: readonly LimitWindow[] = RATE_LIMITS.login.windows) {
+  const first = windows[0];
+  return `That password didn't work. After ${first.limit} tries, sign-in pauses for ${durationWords(Math.round(first.windowMs / MINUTE))}.`;
 }
 
 /** The login page's lockout copy from its `wait` query param (whole minutes, 1 to 1440). */

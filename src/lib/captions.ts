@@ -6,6 +6,9 @@ export const CAPTION_MESSAGES = {
   town: "Enter the town only, with no numbers and no street name."
 } as const;
 
+// DES-15 (batch 5b): a photo can't be published without alt text.
+export const ALT_TEXT_MESSAGE = "Add alt text (8 characters or more) before publishing this photo.";
+
 // Any decimal digit in any script (so full-width digits are caught too).
 const ANY_DIGIT = new RegExp("\\p{Nd}", "u");
 

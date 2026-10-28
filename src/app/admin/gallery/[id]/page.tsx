@@ -3,20 +3,27 @@ import Image from "next/image";
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { deleteGalleryImage, updateGalleryImage } from "@/app/actions";
-import { AdminNotice } from "@/app/admin/admin-fields";
+import { AdminNotice, ConfirmDelete } from "@/app/admin/admin-fields";
+import { AdminShell } from "@/app/admin/admin-shell";
 import { GalleryImageForm } from "@/app/admin/gallery/gallery-image-form";
-import { AdminHeading } from "@/app/admin/admin-heading";
 import { isAdminAuthenticated } from "@/lib/admin-auth";
+import { galleryCategories } from "@/lib/admin-view";
+import { BOOKING_TIME_ZONE } from "@/lib/booking-time";
 import { canRenderGalleryImage, galleryImageNotice } from "@/lib/gallery-visibility";
-import { AdminHeader } from "@/app/admin/admin-header";
 import { prisma } from "@/lib/prisma";
 
 export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
-  title: "Edit Gallery Image",
+  title: "Edit photo",
   robots: { index: false, follow: false }
 };
+
+const uploadedFormat = new Intl.DateTimeFormat("en-US", { timeZone: BOOKING_TIME_ZONE, month: "short", day: "numeric", year: "numeric" });
+
+// Batch 5b (design.md "Gallery edit"): breadcrumb, h1 = title, a meta line (pixel size,
+// upload date, state) and "See it on the site". A large preview on the left, the details on
+// the right, then a danger section to delete the photo and its file.
 
 export default async function EditGalleryImagePage({
   params,
@@ -31,72 +38,109 @@ export default async function EditGalleryImagePage({
 
   const { id } = await params;
   const notice = await searchParams;
+  const token = process.env.BLOB_READ_WRITE_TOKEN;
 
-  const image = await prisma.galleryImage.findUnique({
-    where: { id },
-    select: {
-      id: true,
-      title: true,
-      alt: true,
-      category: true,
-      shoot: true,
-      town: true,
-      imageUrl: true,
-      width: true,
-      height: true,
-      featured: true,
-      published: true
-    }
-  });
+  const [image, used] = await Promise.all([
+    prisma.galleryImage.findUnique({
+      where: { id },
+      select: {
+        id: true,
+        title: true,
+        alt: true,
+        category: true,
+        shoot: true,
+        town: true,
+        imageUrl: true,
+        width: true,
+        height: true,
+        featured: true,
+        published: true,
+        createdAt: true
+      }
+    }),
+    prisma.galleryImage.findMany({ distinct: ["category"], select: { category: true } })
+  ]);
 
   if (!image) {
     notFound();
   }
 
+  const hiddenWhy = galleryImageNotice(image.imageUrl, token);
+  const live = image.published && !hiddenWhy;
+  const { createdAt, ...defaults } = image;
+
   return (
-    <>
-      <AdminHeader current="gallery" />
-    <main className="mx-auto max-w-4xl px-4 py-8 sm:px-6 lg:px-8">
-      <Link href="/admin/gallery" className="focus-ring inline-flex min-h-[44px] items-center text-sm font-semibold text-clay hover:text-ink">
-        Back to Gallery
-      </Link>
-      <AdminHeading title={`Edit ${image.title}`} copy="Update labels, dimensions, visibility, or replace the uploaded image file." />
+    <AdminShell
+      current="gallery"
+      crumb={
+        <>
+          <Link href="/admin/gallery" aria-label="Back to Gallery">Gallery</Link> / <b>{image.title}</b>
+        </>
+      }
+    >
+      <div className="ad-title">
+        <div>
+          <h1>{image.title}</h1>
+          <p className="tnum">
+            {image.width} × {image.height} px · uploaded <time dateTime={createdAt.toISOString()}>{uploadedFormat.format(createdAt)}</time> ·{" "}
+            {live ? (image.featured ? "published, featured on home" : "published") : "hidden"}
+          </p>
+        </div>
+        {live ? (
+          <Link className="ad-btn" href="/portfolio">
+            See it on the site
+          </Link>
+        ) : null}
+      </div>
+
       <AdminNotice error={notice.error} success={notice.success} />
 
-      <article className="mt-8 rounded-lg border border-line bg-white p-5">
-        {galleryImageNotice(image.imageUrl, process.env.BLOB_READ_WRITE_TOKEN) ? (
-          <p className="mb-4 rounded-md border border-line bg-mist px-4 py-3 text-sm leading-6 text-ink">{galleryImageNotice(image.imageUrl, process.env.BLOB_READ_WRITE_TOKEN)}</p>
-        ) : null}
-        {canRenderGalleryImage(image.imageUrl, process.env.BLOB_READ_WRITE_TOKEN) ? (
-          <div className="mb-6 overflow-hidden rounded-lg border border-line bg-mist">
+      <div className="ad-detail">
+        <figure className="ad-panel ad-detail__img">
+          {canRenderGalleryImage(image.imageUrl, token) ? (
             <Image
               src={image.imageUrl}
               alt={image.alt}
               width={image.width}
               height={image.height}
-              className="h-auto w-full object-cover"
-              sizes="(min-width: 1024px) 768px, 100vw"
+              sizes="(min-width: 1440px) 660px, (min-width: 901px) 55vw, 100vw"
             />
+          ) : null}
+          {hiddenWhy ? <figcaption className="ad-detail__none">{hiddenWhy}</figcaption> : null}
+        </figure>
+        <section className="ad-panel" aria-labelledby="details-heading">
+          <div className="ad-panel__head">
+            <h2 id="details-heading">Photo details</h2>
           </div>
-        ) : null}
-        {/* QA-6: the same form as "Add", so a replacement over ~1 MB goes browser -> Blob. */}
-        <GalleryImageForm
-          action={updateGalleryImage}
-          defaults={image}
-          fileLabel="Replace Image File (optional)"
-          submitLabel="Save Changes"
-        />
-        <form action={deleteGalleryImage} className="mt-8">
+          {/* QA-6: the same form as "Upload", so a replacement over 900 KB goes browser -> Blob. */}
+          <GalleryImageForm
+            action={updateGalleryImage}
+            defaults={defaults}
+            fileLabel="Replace the image (optional)"
+            fileHint="The old file is deleted from storage when the new one is saved."
+            submitLabel="Save changes"
+            formLabel="Photo details"
+            categories={galleryCategories(used.map((row) => row.category))}
+          />
+        </section>
+      </div>
+
+      <section className="ad-danger" aria-labelledby="danger-heading">
+        <div>
+          <h2 id="danger-heading">Delete this photo</h2>
+          <p>Removes it from the site and deletes the file from storage. This can&apos;t be undone.</p>
+        </div>
+        <ConfirmDelete
+          summary="Delete photo"
+          question={`Delete “${image.title}” and its file?`}
+          action={deleteGalleryImage}
+          confirmLabel="Yes, delete photo"
+          className="ad-confirm--danger"
+        >
           <input type="hidden" name="id" value={image.id} />
           <input type="hidden" name="returnTo" value={`/admin/gallery/${image.id}`} />
-          <label className="mr-4 inline-flex min-h-[44px] items-center gap-2 text-sm text-ink/80">
-            <input name="confirmDelete" type="checkbox" required className="h-6 w-6 accent-clay" />
-            Confirm delete
-          </label>
-          <button className="focus-ring min-h-[44px] px-2 text-sm font-semibold text-clay">Delete image</button>
-        </form>
-      </article>
-    </main>
-    </>
+        </ConfirmDelete>
+      </section>
+    </AdminShell>
   );
 }

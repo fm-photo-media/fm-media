@@ -8,6 +8,15 @@ import type { BookingOptions } from "@/lib/validation";
 /** The add-on the first-shoot offer makes free (Legal's terms in promotion.ts). */
 export const DRONE_PHOTOS_SLUG = "drone-photos";
 
+/**
+ * LEG-14: the first-shoot offer (free drone photos with any photo package) can only be
+ * honoured when drone photos and at least one photo package are offered. Otherwise the
+ * offer, its terms and its checkbox are not shown (price menu and booking form).
+ */
+export function firstShootOfferAvailable(packageCount: number, addOnSlugs: readonly string[]) {
+  return packageCount > 0 && addOnSlugs.includes(DRONE_PHOTOS_SLUG);
+}
+
 export type MenuItem = {
   slug: string;
   title: string;

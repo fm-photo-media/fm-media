@@ -11,6 +11,12 @@ import type { NavLink } from "@/lib/site";
 // the nav with one "Book a shoot", the phone as a tel: link, and below 1000px a "Menu"
 // button that opens a full-screen sheet. The sheet sets aria-expanded, closes on Esc, on a
 // link tap, on Close and on route change, keeps Tab inside it, and returns focus to Menu.
+// Batch 8 (design.md "Build spec: Variant B", Header): "Book a shoot" (the /contact item)
+// is a .btn in li.top__book (not .book, which is contact's grid). Text links are li.wide.
+// At <=1000px only the phone, Book and Menu stay; at <=640px Book goes too. The Menu li is
+// display:none above 1000px so it adds no gap at the right margin.
+
+const BOOK_HREF = "/contact";
 
 function isCurrent(pathname: string, href: string) {
   return href === "/" ? pathname === "/" : pathname === href || pathname.startsWith(`${href}/`);
@@ -67,21 +73,23 @@ export function SiteHeader({ nav }: { nav: readonly NavLink[] }) {
   }
 
   const current = (href: string) => (isCurrent(pathname, href) ? ("page" as const) : undefined);
+  const links = nav.filter((item) => item.href !== BOOK_HREF);
+  const book = nav.find((item) => item.href === BOOK_HREF);
 
   return (
     <>
       <a className="skip" href="#main">
         Skip to content
       </a>
-      <header className="top">
+      <header className="top" id="top">
         <div className="wrap">
           <Link className="top__logo" href="/" aria-current={current("/")}>
             <Image src="/brand/logo-full.png" width={564} height={519} alt="FM Media" priority sizes="(max-width: 640px) 74px, 113px" />
           </Link>
           <nav aria-label="Main">
             <ul className="top__nav">
-              {nav.map((item) => (
-                <li key={item.href}>
+              {links.map((item) => (
+                <li key={item.href} className="wide">
                   <Link href={item.href} aria-current={current(item.href)}>
                     {item.label}
                   </Link>
@@ -92,7 +100,14 @@ export function SiteHeader({ nav }: { nav: readonly NavLink[] }) {
                   {BUSINESS.phoneDisplay}
                 </a>
               </li>
-              <li className="keep">
+              {book ? (
+                <li className="top__book">
+                  <Link className="btn" href={book.href} aria-current={current(book.href)}>
+                    {book.label}
+                  </Link>
+                </li>
+              ) : null}
+              <li className="menu">
                 <button
                   ref={buttonRef}
                   className="menu-btn"

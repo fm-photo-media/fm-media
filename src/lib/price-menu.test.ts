@@ -113,3 +113,12 @@ test("discountSentence reads the DB price label as a range", async () => {
   );
   assert.equal(discountSentence({ priceLabel: null, summary: " Ask about repeat rates. " }), "Ask about repeat rates.");
 });
+
+// LEG-14: the first-shoot offer (free drone photos with a package) is offered only when both exist.
+test("firstShootOfferAvailable: needs drone photos and at least one package", async () => {
+  const { firstShootOfferAvailable } = await import("./price-menu");
+  assert.equal(firstShootOfferAvailable(1, [DRONE_PHOTOS_SLUG, "floor-plans"]), true);
+  assert.equal(firstShootOfferAvailable(0, [DRONE_PHOTOS_SLUG]), false);
+  assert.equal(firstShootOfferAvailable(3, ["floor-plans"]), false);
+  assert.equal(firstShootOfferAvailable(0, []), false);
+});

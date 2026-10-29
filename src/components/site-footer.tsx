@@ -3,62 +3,55 @@ import Link from "next/link";
 import { BUSINESS } from "@/lib/business";
 import type { NavLink } from "@/lib/site";
 
-// Batch 5 (design.md "Footer card"): Francisco's business card as the page's close: blue
-// bands, the logo, "Real Estate Media", the contact lines, a send line with "Book a shoot",
-// then the link rows. LEG-2 (batch4-copy section 3): name, owner, call/text, email and the
-// Chicagoland service area. LEG-1: Privacy Policy and Terms of Service on every page.
-// QA-11: every footer link is at least 44px tall.
+// LEG-2 (batch4-copy section 3): name, owner, call/text, email and the Chicagoland service
+// area. LEG-1: Privacy Policy and Terms of Service on every page. QA-11: every footer link
+// is at least 44px tall.
+// Batch 8 (design.md "Build spec: Variant B", Footer): the blue field with the white logo
+// mark beside FM MEDIA (the mark is alt="", so the name is read once), "Real Estate Media",
+// the ways in the serif, then the nav plus the legal links in 3 rows that flow by column.
+// The footer meets a page that ends on a full-bleed field with no gap (globals.css).
 export function SiteFooter({ nav }: { nav: readonly NavLink[] }) {
   return (
     <footer className="foot on-blue">
       <h2 className="vh">Contact {BUSINESS.name}</h2>
-      <div className="bizcard">
-        <div className="bizcard__brand">
-          <Image
-            src="/brand/logo-full.png"
-            width={564}
-            height={519}
-            sizes="160px"
-            alt="FM Media logo: a house drawn from the letters F and M, with a drone on the roof and a camera aperture in the window"
-          />
-          <p className="bizcard__tag">Real Estate Media</p>
-        </div>
-        <div className="bizcard__lines">
-          <a href={`tel:${BUSINESS.phoneE164}`}>{BUSINESS.phoneDisplay}</a>
-          <a href={`sms:${BUSINESS.phoneE164}`}>Send a text</a>
-          <a href={`mailto:${BUSINESS.email}`}>{BUSINESS.email}</a>
-          <a href="https://fm-media.org">fm-media.org</a>
-          <span>Serving {BUSINESS.serviceArea}</span>
-          <span className="bizcard__owner">Owner: {BUSINESS.owner}</span>
-        </div>
-        <div className="bizcard__send">
-          <p>Send the address, the square footage and a day that works.</p>
-          <Link className="btn" href="/contact#form">
-            Book a shoot
-          </Link>
-        </div>
-      </div>
-      <div className="foot__links">
-        <nav aria-label="Footer">
-          <ul>
-            {nav.map((item) => (
-              <li key={item.href}>
-                <Link href={item.href}>{item.label}</Link>
+      <div className="wrap">
+        <p className="foot__brand">
+          <Image src="/brand/logo-mark-white.png" width={564} height={377} sizes="(max-width: 640px) 17vw, 258px" alt="" />
+          <span className="foot__name">{BUSINESS.name}</span>
+        </p>
+        <p className="foot__tag">Real Estate Media</p>
+        <div className="foot__row">
+          <div className="foot__ways">
+            <a href={`tel:${BUSINESS.phoneE164}`}>{BUSINESS.phoneDisplay}</a>
+            <a href={`mailto:${BUSINESS.email}`}>{BUSINESS.email}</a>
+            <span>Serving {BUSINESS.serviceArea}</span>
+            <p className="small">
+              Owner: {BUSINESS.owner} · <a href="https://fm-media.org">fm-media.org</a>
+            </p>
+            <p className="small touch-only">
+              <a href={`sms:${BUSINESS.phoneE164}`}>Send a text</a>
+            </p>
+          </div>
+          <nav className="foot__nav" aria-label="Footer">
+            <ul className="foot__links">
+              {nav.map((item) => (
+                <li key={item.href}>
+                  <Link href={item.href}>{item.label}</Link>
+                </li>
+              ))}
+              <li>
+                <Link href="/privacy">Privacy Policy</Link>
               </li>
-            ))}
-          </ul>
-        </nav>
-        <ul>
-          <li>
-            <Link href="/privacy">Privacy Policy</Link>
-          </li>
-          <li>
-            <Link href="/terms">Terms of Service</Link>
-          </li>
-          <li>
-            <span>© 2026 {BUSINESS.name}</span>
-          </li>
-        </ul>
+              <li>
+                <Link href="/terms">Terms of Service</Link>
+              </li>
+            </ul>
+          </nav>
+        </div>
+        <div className="foot__legal">
+          <span>© 2026 {BUSINESS.name}</span>
+          <a href="#top">Back to top</a>
+        </div>
       </div>
     </footer>
   );

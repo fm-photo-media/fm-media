@@ -17,7 +17,10 @@ const photoCount = (count: number) => `${count} ${count === 1 ? "photo" : "photo
 
 // Batch 5 (design.md "Portfolio"; research pattern 7): one set per shoot, captioned by town,
 // never by street address. Only Francisco's own uploads show (gallery-visibility.ts); images
-// without a shoot form one ungrouped set. An empty state in tint keeps the frame.
+// without a shoot form one ungrouped set.
+// Batch 8 (design.md "Build spec: Variant B", Portfolio): the closing tint band is full-bleed
+// and the last child of main, so the footer meets it with no gap. While empty, the route
+// stays out of the nav, footer, 404 and sitemap (batch 7, site.ts navLinks).
 export default async function PortfolioPage() {
   const images = await getPublishedGalleryImages();
   const groups = groupByShoot(images);
@@ -43,50 +46,55 @@ export default async function PortfolioPage() {
     <main id="main">
       <section className="phead" aria-labelledby="h1">
         <div className="wrap">
-          <h1 className="h1" id="h1">
+          <h1 className="display" id="h1">
             Portfolio
           </h1>
-          <p className="lede">Whole shoots, one home at a time, so you can see what a listing gets.</p>
-          <p className="phead__act">
-            <Link className="btn" href="/contact#form">
-              Book a shoot
-            </Link>
-          </p>
+          <div className="phead__under">
+            <p className="lede">Whole shoots, one home at a time, so you can see what a listing gets.</p>
+            <p className="phead__act">
+              <Link className="btn" href="/contact#form">
+                Book a shoot
+              </Link>
+            </p>
+          </div>
         </div>
       </section>
 
       {sets.length ? <PortfolioGallery sets={sets} /> : null}
 
-      <section className="wrap shoot shoot--next" aria-labelledby="more-h">
-        <h2 className="h2" id="more-h">
-          {sets.length ? "More shoots" : "Portfolio update"}
-        </h2>
-        {sets.length ? (
-          <p>Each new shoot is added here as its own set, with its town.</p>
-        ) : (
-          // Legal batch 4: the neutral empty-portfolio line, with tel and sms links.
-          // DES-29: the sms: link only on touch screens; a single tel: link on desktop.
-          <p className="fact">
-            Our portfolio is being updated. Questions in the meantime?{" "}
-            <span className="touch-only">
-              Call or&nbsp;
-              <a className="link tap" href={`sms:${BUSINESS.phoneE164}`}>
-                text
-              </a>
-              &nbsp;
-              <a className="link tap" href={`tel:${BUSINESS.phoneE164}`}>
-                {BUSINESS.phoneDisplay}
-              </a>
-              .
-            </span>
-            <span className="fine-only">
-              <a className="link tap" href={`tel:${BUSINESS.phoneE164}`}>
-                Call or text {BUSINESS.phoneDisplay}
-              </a>
-              .
-            </span>
-          </p>
-        )}
+      <section className="shoot-next" aria-labelledby="more-h">
+        <div className="wrap">
+          <h2 className="h2" id="more-h">
+            {sets.length ? "More shoots" : "Portfolio update"}
+          </h2>
+          {sets.length ? (
+            <p>Each new shoot is added here as its own set, with its town.</p>
+          ) : (
+            // Legal batch 4: the neutral empty-portfolio line, with tel and sms links.
+            // DES-29: the sms: link only on touch screens; a single tel: link on desktop.
+            <p className="fact">
+              Our portfolio is being updated. Questions in the meantime?{" "}
+              <span className="touch-only">
+                Call or&nbsp;
+                <a className="link tap" href={`sms:${BUSINESS.phoneE164}`}>
+                  text
+                </a>
+                &nbsp;
+                <a className="link tap" href={`tel:${BUSINESS.phoneE164}`}>
+                  {BUSINESS.phoneDisplay}
+                </a>
+                .
+              </span>
+              <span className="fine-only">
+                {/* The label may wrap like the mockup; the number itself stays whole. */}
+                <a className="link tap wraps" href={`tel:${BUSINESS.phoneE164}`}>
+                  Call or text <span className="nowrap">{BUSINESS.phoneDisplay}</span>
+                </a>
+                .
+              </span>
+            </p>
+          )}
+        </div>
       </section>
     </main>
   );

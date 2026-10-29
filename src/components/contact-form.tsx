@@ -6,7 +6,7 @@ import { createInquiry, type FormState } from "@/app/actions";
 import { BOOKING_LIMITS, NO_PACKAGE_VALUE } from "@/lib/booking-limits";
 import { BUSINESS } from "@/lib/business";
 import { MIN_LEAD_MINUTES, TIME_WINDOWS, chicagoWallClock, timeFitsWindow, type TimeWindow } from "@/lib/booking-time";
-import { prefillFromQuery } from "@/lib/price-menu";
+import { firstShootOfferAvailable, prefillFromQuery } from "@/lib/price-menu";
 import { firstShootDroneOffer } from "@/lib/promotion";
 import type { BookingOptions } from "@/lib/validation";
 
@@ -71,17 +71,22 @@ function errorProps(name: string, error?: string, hintId?: string) {
   } as const;
 }
 
-function CallOrText() {
+// After "Or" in the error notice the sentence continues, so "call" is lower case there.
+function CallOrText({ lower = false }: { lower?: boolean }) {
   return (
     <>
-      Call{" "}
+      {lower ? "call" : "Call"}{" "}
       <a href={"tel:" + PHONE_E164} className="fact">
         {PHONE_DISPLAY}
-      </a>{" "}
-      or{" "}
-      <a href={"sms:" + PHONE_E164} className="fact">
-        send a text
       </a>
+      {/* Batch 8 (design.md "Book a shoot", States): the text link only where sms: works. */}
+      <span className="touch-only">
+        {" "}
+        or{" "}
+        <a href={"sms:" + PHONE_E164} className="fact">
+          send a text
+        </a>
+      </span>
       .
     </>
   );
@@ -249,7 +254,7 @@ export function ContactForm({ options }: { options: BookingOptions }) {
             {/* QA-28: some server messages already end with the phone number; say it once. */}
             {state.message.includes(PHONE_DISPLAY) ? null : (
               <>
-                Or <CallOrText />
+                Or <CallOrText lower />
               </>
             )}
             {summary.length ? (
@@ -393,6 +398,8 @@ export function ContactForm({ options }: { options: BookingOptions }) {
               <FieldError id="videoService-error" message={fields.videoService} />
             </fieldset>
           ) : null}
+          {/* LEG-14: the offer only when it can be honoured (drone photos and a package offered). */}
+          {firstShootOfferAvailable(options.photoPackages.length, options.addOns.map((item) => item.value)) ? (
           <div className="span-2 first">
             <label className="check">
               <input id="firstShootOffer" name="firstShootOffer" type="checkbox" {...errorProps("firstShootOffer", fields.firstShootOffer)} />
@@ -407,6 +414,7 @@ export function ContactForm({ options }: { options: BookingOptions }) {
                 behind a click (promotion.ts, the same text as Terms §6). */}
             <p className="fact first__terms">{firstShootDroneOffer.terms}</p>
           </div>
+          ) : null}
         </section>
 
         <section className="fs" aria-labelledby="f2">

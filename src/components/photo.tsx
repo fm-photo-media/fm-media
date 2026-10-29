@@ -23,12 +23,12 @@ export function Photo({
   );
 }
 
-// The no-photo treatment: until Francisco uploads his own shoot, the slot shows his
-// card's mark on the tint field, never a sample or stock image.
-export function BrandPanel({ className = "" }: { className?: string }) {
+// The no-photo treatment (404): the blue logo mark on a 1:1 tint square, never a sample or
+// stock image. Batch 8 (design.md "Build spec: Variant B", 404): columns 8-12, hidden <=900px.
+export function BrandPanel({ className = "nf__mark" }: { className?: string }) {
   return (
-    <div className={`ph ph--32 ph--brand ${className}`.trim()}>
-      <Image src="/brand/logo-mark.png" alt="" fill sizes="(max-width: 640px) 100vw, 58vw" />
+    <div className={className}>
+      <Image src="/brand/logo-mark.png" width={564} height={377} alt="" sizes="30vw" />
     </div>
   );
 }

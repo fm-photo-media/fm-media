@@ -67,7 +67,7 @@ export function LegalPage({ file }: { file: "privacy.md" | "terms.md" }) {
     <main id="main">
       <section className="phead" aria-labelledby="h1">
         <div className="wrap">
-          <h1 className="h1" id="h1">
+          <h1 className="display" id="h1">
             {doc.title}
           </h1>
         </div>

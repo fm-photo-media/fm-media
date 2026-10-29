@@ -1,9 +1,8 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { Photo } from "@/components/photo";
 import { PriceMenu } from "@/components/price-menu";
 import { BUSINESS } from "@/lib/business";
-import { getFeaturedGalleryImages, getPublishedServices } from "@/lib/data";
+import { getPublishedServices } from "@/lib/data";
 import { menuItemsFrom } from "@/lib/price-menu";
 import { INCLUDED_LINE, discountNote } from "@/lib/services";
 
@@ -18,44 +17,45 @@ export const metadata: Metadata = {
 
 // Batch 5 (design.md "Services and pricing"; DES-9, DES-21, DES-22): one page built from the
 // published Service rows (QA-2). /pricing 308-redirects here (next.config.mjs).
-// Batch 7 (design.md "Final whole-site review", change 2; DES-34): one price list, not two.
-// The three tables are gone; the price menu sits under the h1. It already carries every row
-// with its home size, edited photos (or what the add-on is) and price, the offer once with
-// its terms, and the live total. The side panel moves beside it, and Legal's repeat-discount
-// sentence and the "every photo package includes" line stay under it.
+// Batch 7 (DES-34): one price list, not two.
+// Batch 8 (design.md "Build spec: Variant B", "Services"): the whole page is the price
+// section, its sentence the h1. No photo here: the help block takes the right column.
+// DES-50: the sms: link is touch-only; fine pointers get one tel: "Call or text".
 export default async function ServicesPage() {
-  const [services, photos] = await Promise.all([getPublishedServices(), getFeaturedGalleryImages(2)]);
-  // One photo at most here: the second featured upload (the first is the home hero).
-  const sidePhoto = photos[1] ?? photos[0];
+  const services = await getPublishedServices();
 
   return (
     <main id="main">
-      <section className="phead" aria-labelledby="h1">
-        <div className="wrap">
-          <h1 className="h1" id="h1">
-            Services and pricing
-          </h1>
-          <p className="lede">Every package is priced by the home&apos;s square footage. Francisco confirms the price with you before the shoot.</p>
-        </div>
-      </section>
-
       <PriceMenu
         menu={menuItemsFrom(services)}
+        heading="h1"
+        headingId="h1"
+        className="prices--first"
         footnote={[discountNote(services), INCLUDED_LINE]}
-        className="prices--lead"
-        aside={
-          <aside className="prices__aside" aria-label="Not sure which package fits?">
-            {sidePhoto ? (
-              <Photo src={sidePhoto.imageUrl} alt={sidePhoto.alt} sizes="(max-width: 640px) 100vw, (max-width: 1000px) 50vw, 30vw" />
-            ) : null}
-            <p>Not sure which package fits? Send the address and the square footage, and Francisco will tell you.</p>
-            <Link className="btn" href="/contact#form">
-              Book a shoot
-            </Link>
-            <a className="link link--blue tap" href={`sms:${BUSINESS.phoneE164}`}>
-              Text {BUSINESS.phoneDisplay}
-            </a>
-          </aside>
+        under={
+          <>
+            <p>Every package is priced by the home&apos;s square footage. Francisco confirms the price with you before the shoot.</p>
+            <div className="help">
+              <p>Not sure which package fits? Send the address and the square footage, and Francisco will tell you.</p>
+              <div className="act">
+                <Link className="btn" href="/contact#form">
+                  Book a shoot
+                </Link>
+                <span className="fact touch-only">
+                  <a className="link link--blue tap" href={`tel:${BUSINESS.phoneE164}`}>
+                    Call
+                  </a>
+                  &nbsp;or&nbsp;
+                  <a className="link link--blue tap" href={`sms:${BUSINESS.phoneE164}`}>
+                    text {BUSINESS.phoneDisplay}
+                  </a>
+                </span>
+                <a className="link link--blue tap fact fine-only" href={`tel:${BUSINESS.phoneE164}`}>
+                  Call or text {BUSINESS.phoneDisplay}
+                </a>
+              </div>
+            </div>
+          </>
         }
       />
     </main>

@@ -1,11 +1,13 @@
 import type { Metadata } from "next";
+import Image from "next/image";
 import Link from "next/link";
 import { Photo } from "@/components/photo";
 import { PriceMenu } from "@/components/price-menu";
 import { BUSINESS } from "@/lib/business";
 import { getFeaturedGalleryImages, getPublishedServices } from "@/lib/data";
+import { homeHero, lowestPackage, packageLine } from "@/lib/home";
 import { menuItemsFrom } from "@/lib/price-menu";
-import { INCLUDED_LINE, discountNote } from "@/lib/services";
+import { discountNote } from "@/lib/services";
 
 export const revalidate = 3600;
 
@@ -16,103 +18,110 @@ export const metadata: Metadata = {
   alternates: { canonical: "/" }
 };
 
-// Batch 5 (design.md "Home"): split hero (who, where, how to reach him, from $100), the
-// price menu with the live total, and "How a shoot goes". Two photo slots, filled only by
-// Francisco's own featured uploads (hero exterior, then one interior); without them the
-// hero shows the no-photo panel and the price menu shows none. No home portfolio row.
+// Batch 8 (design.md "Build spec: Variant B", "Home"): the name as a monument. The hero is
+// hero--photo only when one of Francisco's own featured uploads exists (home.ts homeHero);
+// otherwise hero--name, with no photo row, box, panel or second logo. Then the price
+// sentence and list on the tint field, "How a shoot goes", and the one-word BOOK band.
 export default async function HomePage() {
   const [photos, services] = await Promise.all([getFeaturedGalleryImages(6), getPublishedServices()]);
-  // The hero prefers a featured exterior; the price menu takes the next featured photo.
-  const hero = photos.find((photo) => /exterior/i.test(photo.category)) ?? photos[0];
-  const interior = photos.find((photo) => photo !== hero);
+  const { mode, hero, interior } = homeHero(photos);
   const menu = menuItemsFrom(services);
-  const lowest = menu.packages.length ? Math.min(...menu.packages.map((item) => item.amount)) : 0;
+  const low = lowestPackage(services);
+  const line = packageLine(low);
 
   return (
     <main id="main">
-      <section className="hero" aria-labelledby="h1">
-        <div className="wrap hero__grid">
-          <div className="hero__text">
-            <h1 className="h1" id="h1">
-              Chicagoland
-              <br />
-              listing photos
-            </h1>
+      <section className={`hero hero--${mode}`} aria-labelledby="h1">
+        {hero ? (
+          <figure className="ph hero__photo">
+            <Image src={hero.imageUrl} alt={hero.alt} fill priority sizes="100vw" />
+          </figure>
+        ) : null}
+        <h1 className="mon mon--settle wrap" id="h1">
+          FM Media<span className="vh">: Chicagoland listing photos</span>
+        </h1>
+        <div className="wrap hero__row">
+          <div className="hero__say">
             <p className="lede">
-              Photos, drone, video and floor plans for real estate agents. You book directly with the owner, {BUSINESS.owner}.
+              Listing photos, drone, video and floor plans for agents across {BUSINESS.serviceArea}, booked directly with the owner,{" "}
+              {BUSINESS.owner}.
             </p>
-            {lowest > 0 ? <p className="fact hero__price">Photo packages from ${lowest}, priced by square footage.</p> : null}
-            <div className="hero__act">
-              <Link className="btn" href="/contact#form">
-                Book a shoot
-              </Link>
-              {/* DES-29: sms: only where it works (touch screens); one tel: link on desktop.
-                  DES-37: with no photo, the blue facts field carries the number, so these go. */}
-              {hero ? (
-                <>
-                  <span className="fact touch-only">
-                    <a className="link link--blue tap" href={`tel:${BUSINESS.phoneE164}`}>
-                      Call
-                    </a>
-                    &nbsp;or&nbsp;
-                    <a className="link link--blue tap" href={`sms:${BUSINESS.phoneE164}`}>
-                      text {BUSINESS.phoneDisplay}
-                    </a>
-                  </span>
-                  <span className="fact fine-only">
-                    <a className="link link--blue tap" href={`tel:${BUSINESS.phoneE164}`}>
-                      Call or text {BUSINESS.phoneDisplay}
-                    </a>
-                  </span>
-                </>
-              ) : null}
-            </div>
+            {low ? <p className="fact">Photo packages from ${low.startingAt}, priced by square footage.</p> : null}
           </div>
-          {hero ? (
-            <Photo className="hero__photo" src={hero.imageUrl} alt={hero.alt} priority sizes="(max-width: 640px) 100vw, 58vw" />
-          ) : (
-            // DES-23: no photo of his own yet, so the slot carries the facts, not a second logo.
-            <div className="ph ph--32 hero__photo hero-facts on-blue">
-              <p className="hero-facts__label">Call or text</p>
-              <a className="hero-facts__phone" href={`tel:${BUSINESS.phoneE164}`}>
-                {BUSINESS.phoneDisplay}
+          <div className="hero__act">
+            {/* DES-29: sms: only where it works (touch screens); one tel: link on desktop. */}
+            <span className="fact touch-only">
+              <a className="link link--blue tap" href={`tel:${BUSINESS.phoneE164}`}>
+                Call
               </a>
-              <p>Serving {BUSINESS.serviceArea}</p>
-              <a className="btn btn--paper touch-only" href={`sms:${BUSINESS.phoneE164}`}>
-                Text the address
+              &nbsp;or&nbsp;
+              <a className="link link--blue tap" href={`sms:${BUSINESS.phoneE164}`}>
+                text {BUSINESS.phoneDisplay}
               </a>
-            </div>
-          )}
+            </span>
+            <a className="link link--blue tap fact fine-only" href={`tel:${BUSINESS.phoneE164}`}>
+              Call or text {BUSINESS.phoneDisplay}
+            </a>
+            <Link className="btn" href="/contact#form">
+              Book a shoot
+            </Link>
+          </div>
         </div>
       </section>
 
       <PriceMenu
         menu={menu}
+        heading="h2"
         footnote={discountNote(services)}
-        aside={interior ? <Photo src={interior.imageUrl} alt={interior.alt} sizes="(max-width: 1000px) 100vw, 33vw" /> : null}
+        under={
+          <>
+            {interior ? <Photo src={interior.imageUrl} alt={interior.alt} sizes="(max-width: 1000px) 100vw, 40vw" /> : null}
+            <p>{line ? `${line} ` : ""}Tick what the listing needs and the total adds itself up.</p>
+            <div className={interior ? "act below" : "act"}>
+              <Link className="btn" href="/contact#form">
+                Book a shoot
+              </Link>
+            </div>
+          </>
+        }
       />
 
-      <section className="wrap how section" aria-labelledby="how-h">
+      <section className="wrap how" aria-labelledby="how-h">
         <h2 className="h2" id="how-h">
           How a shoot goes
         </h2>
-        <div className="how__steps">
-          <div>
+        <ol className="how__steps">
+          <li>
             <h3 className="h3">You send the listing</h3>
             <p>The address, the square footage and a day that works, by text, a call or the booking form.</p>
-          </div>
-          <div>
+          </li>
+          <li>
             <h3 className="h3">Francisco confirms, then we shoot</h3>
             <p>He confirms the time and the price with you by phone, text or email. Then we photograph the home.</p>
-          </div>
-          <div>
+          </li>
+          <li>
             <h3 className="h3">You get the photos</h3>
             <p>Edited and ready for the MLS. The delivery time is confirmed when you book.</p>
-          </div>
-        </div>
-        <p className="fact how__incl">{INCLUDED_LINE}</p>
+          </li>
+        </ol>
       </section>
+
+      {/* The band is one link: its name is the sentence plus "Book" (no block elements inside). */}
+      <Link className="band on-blue" href="/contact#form">
+        <span className="wrap">
+          <span className="band__top">
+            <span className="band__say">
+              Send the address, the square footage and a day that works. Francisco confirms the time and the price with you.
+            </span>
+            <svg viewBox="0 0 48 48" aria-hidden="true" focusable="false">
+              <path d="M12 36 36 12M16 12h20v20" fill="none" stroke="currentColor" strokeWidth="4" />
+            </svg>
+          </span>
+          <span className="band__word" role="heading" aria-level={2}>
+            Book
+          </span>
+        </span>
+      </Link>
     </main>
   );
 }
-

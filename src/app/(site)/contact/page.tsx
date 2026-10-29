@@ -15,6 +15,9 @@ export const metadata: Metadata = {
 // Batch 5 (design.md "Contact and booking"): the call box first (left on desktop, top on a
 // phone), then the form in three groups. LEG-2 (batch4-copy section 3) and 4.3 / 4.19: the
 // identity facts sit in the call box.
+// Batch 8 (design.md "Build spec: Variant B", Book a shoot): the call box is a blue field,
+// sticky on desktop; "Text the address" shows on touch screens only (on a desktop the number
+// is the link). The form is unchanged.
 export default async function ContactPage() {
   const options = await getBookingOptions();
 
@@ -22,21 +25,23 @@ export default async function ContactPage() {
     <main id="main">
       <section className="phead" aria-labelledby="h1">
         <div className="wrap">
-          <h1 className="h1" id="h1">
+          <h1 className="display" id="h1">
             Book a shoot
           </h1>
-          <p className="lede">Text the address, call, or use the form. Francisco confirms every shoot with you before it&apos;s booked.</p>
+          <div className="phead__under">
+            <p className="lede">Text the address, call, or use the form. Francisco confirms every shoot with you before it&apos;s booked.</p>
+          </div>
         </div>
       </section>
       <section className="wrap book" aria-label="Booking">
-        <aside className="book__direct" aria-labelledby="direct-h">
+        <aside className="book__direct on-blue" aria-labelledby="direct-h">
           <h2 className="h3" id="direct-h">
             Call or text
           </h2>
           <a className="book__phone fact" href={`tel:${BUSINESS.phoneE164}`}>
             {BUSINESS.phoneDisplay}
           </a>
-          <a className="btn" href={`sms:${BUSINESS.phoneE164}`}>
+          <a className="btn btn--paper touch-only" href={`sms:${BUSINESS.phoneE164}`}>
             Text the address
           </a>
           <p className="fact">

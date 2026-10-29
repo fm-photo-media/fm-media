@@ -23,8 +23,8 @@ export default async function NotFound() {
       <SiteHeader nav={nav} />
       <main id="main">
         <section className="wrap nf" aria-labelledby="h1">
-          <div>
-            <h1 className="h1" id="h1">
+          <div className="nf__text">
+            <h1 className="display" id="h1">
               This page isn&apos;t here
             </h1>
             <p className="lede">The link may be old, or the address has a typo. Everything else is one tap away.</p>
